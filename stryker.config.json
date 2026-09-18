@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "command",
+  "commandRunner_comment": "Run all workspace unit tests through their package scripts; the server uses Vitest under Bun.",
+  "commandRunner": {
+    "command": "vp run test"
+  },
+  "coverageAnalysis": "off",
+  "mutate_comment": "Only runtime source. Build scripts and vite configs have no tests, so mutating them only adds survivors.",
+  "mutate": [
+    "{apps/server/src,packages/*/src}/**/!(*.d|*.test).ts",
+    "apps/client/projects/*/src/**/!(*.d|*.spec|*.stories).ts",
+    "!apps/client/projects/desktop/src/main.ts",
+    "!apps/client/projects/desktop/src/test-setup.ts",
+    "!apps/client/projects/desktop/src/app/app.config.ts",
+    "!apps/client/projects/desktop/src/app/app.routes.ts"
+  ],
+  "thresholds": {
+    "high": 90,
+    "low": 80,
+    "break": 90
+  },
+  "reporters": ["clear-text", "progress", "html"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "ignorePatterns_comment": "These decide what Stryker copies into its sandbox. `target/**` is the Rust build directory; without it every run duplicates gigabytes.",
+  "ignorePatterns": [
+    ".codegraph/**",
+    ".agents/**",
+    ".claude/**",
+    "docs/**",
+    "scripts/**",
+    ".github/**",
+    ".env*",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.angular/**",
+    "**/target/**",
+    "reports/**",
+    "**/*.stories.ts"
+  ],
+  "ignorers": ["angular"]
+}

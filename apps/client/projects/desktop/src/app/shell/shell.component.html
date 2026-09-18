@@ -1,0 +1,145 @@
+<app-app-bar />
+
+<!-- Hidden panels stay in their split at size 0, so showing and hiding can animate. -->
+<div class="min-h-0 flex-1 px-2 pb-2">
+  <div
+    #panels
+    hlmResizableGroup
+    class="min-h-0 min-w-0"
+    [layout]="dimensions().sidebar"
+    (layoutChange)="remember('sidebar', $event)"
+    (dragStart)="dragging.set('sidebar')"
+    (dragEnd)="finishResize('sidebar')"
+    [attr.data-animating]="layout.animating()"
+  >
+    <!-- Sidebar -->
+    <section
+      hlmResizablePanel
+      id="shell-sidebar"
+      data-app-chrome
+      [defaultSize]="dimensions().sidebar[0]"
+      [minSize]="dimensions().sidebarMin"
+      [maxSize]="dimensions().sidebarMax"
+      [collapsible]="false"
+      class="min-w-0 rounded-lg border bg-sidebar in-data-[animating=true]:transition-[flex-grow] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+      aria-label="Sidebar"
+    >
+      <nav
+        class="group/rail flex h-full min-h-0 select-none flex-col"
+        aria-label="Workspace navigation"
+        [attr.data-expanded]="layout.isOpen('sidebar')"
+      >
+        <ng-container [ngComponentOutlet]="layout.page()?.sidebar ?? null" />
+      </nav>
+    </section>
+    <hlm-resizable-handle
+      withHandle
+      aria-label="Resize sidebar"
+      aria-controls="shell-sidebar"
+      [disabled]="!layout.isOpen('sidebar')"
+      [attr.data-dragging]="dragging() === 'sidebar'"
+      (keyup)="finishKeyboardResize('sidebar', $event)"
+    />
+    <div
+      hlmResizablePanel
+      [defaultSize]="dimensions().sidebar[1]"
+      [minSize]="100 - dimensions().sidebarMax"
+      [collapsible]="false"
+      class="min-h-0 min-w-0 in-data-[animating=true]:transition-[flex-grow] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+    >
+      <div
+        hlmResizableGroup
+        class="min-h-0 min-w-0"
+        [layout]="dimensions().right"
+        (layoutChange)="remember('right', $event)"
+        (dragStart)="dragging.set('right')"
+        (dragEnd)="finishResize('right')"
+      >
+        <div
+          hlmResizablePanel
+          [defaultSize]="dimensions().right[0]"
+          [minSize]="layout.isOpen('right') ? 100 - dimensions().rightMax : 0"
+          [collapsible]="false"
+          class="min-h-0 min-w-0 in-data-[animating=true]:transition-[flex-grow] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+        >
+          <div
+            hlmResizableGroup
+            direction="vertical"
+            class="min-h-0 min-w-0"
+            [layout]="dimensions().bottom"
+            (layoutChange)="remember('bottom', $event)"
+            (dragStart)="dragging.set('bottom')"
+            (dragEnd)="finishResize('bottom')"
+          >
+            <!-- Main: the routed page -->
+            <main
+              hlmResizablePanel
+              id="shell-main"
+              [defaultSize]="dimensions().bottom[0]"
+              [minSize]="layout.isOpen('bottom') ? 100 - dimensions().bottomMax : 0"
+              [collapsible]="false"
+              class="min-h-0 min-w-0 rounded-lg border bg-background in-data-[animating=true]:transition-[flex-grow] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+              aria-label="Main panel"
+            >
+              <div class="h-full overflow-auto overscroll-y-none"><router-outlet /></div>
+            </main>
+            <hlm-resizable-handle
+              withHandle
+              aria-label="Resize terminal"
+              aria-controls="shell-bottom"
+              class="data-[collapsed=true]:h-0! in-data-[animating=true]:transition-[height] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+              [disabled]="!layout.isOpen('bottom')"
+              [attr.data-collapsed]="!layout.isOpen('bottom')"
+              [attr.data-dragging]="dragging() === 'bottom'"
+              (keyup)="finishKeyboardResize('bottom', $event)"
+            />
+            <!-- Bottom: the terminal -->
+            <section
+              hlmResizablePanel
+              id="shell-bottom"
+              [defaultSize]="dimensions().bottom[1]"
+              [minSize]="dimensions().bottomMin"
+              [maxSize]="dimensions().bottomMax"
+              [collapsible]="false"
+              [inert]="!layout.isOpen('bottom')"
+              class="min-h-0 min-w-0 in-data-[animating=true]:transition-[flex-grow] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+              aria-label="Terminal"
+            >
+              <div class="flex h-full flex-col rounded-lg border bg-background">
+                <ng-container [ngComponentOutlet]="layout.page()?.bottom ?? null" />
+              </div>
+            </section>
+          </div>
+        </div>
+        <hlm-resizable-handle
+          withHandle
+          aria-label="Resize right panel"
+          aria-controls="shell-right"
+          class="data-[collapsed=true]:w-0! in-data-[animating=true]:transition-[width] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+          [disabled]="!layout.isOpen('right')"
+          [attr.data-collapsed]="!layout.isOpen('right')"
+          [attr.data-dragging]="dragging() === 'right'"
+          (keyup)="finishKeyboardResize('right', $event)"
+        />
+        <!-- Right panel -->
+        <aside
+          hlmResizablePanel
+          id="shell-right"
+          [defaultSize]="dimensions().right[1]"
+          [minSize]="dimensions().rightMin"
+          [maxSize]="dimensions().rightMax"
+          [collapsible]="false"
+          [inert]="!layout.isOpen('right')"
+          class="min-h-0 min-w-0 in-data-[animating=true]:transition-[flex-grow] in-data-[animating=true]:duration-200 in-data-[animating=true]:ease-out motion-reduce:transition-none"
+          aria-label="Right panel"
+        >
+          <div class="h-full overflow-auto overscroll-y-none rounded-lg border bg-background">
+            <ng-container [ngComponentOutlet]="layout.page()?.right ?? null" />
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-command-palette />

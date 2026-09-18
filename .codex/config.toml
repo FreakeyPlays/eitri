@@ -1,0 +1,7 @@
+[mcp_servers.codegraph]
+command = "codegraph"
+args = ["serve", "--mcp"]
+
+[mcp_servers.angular-cli]
+command = "vpx"
+args = ["-y", "@angular/cli", "mcp"]

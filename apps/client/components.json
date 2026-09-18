@@ -1,0 +1,5 @@
+{
+  "componentsPath": "projects/ui",
+  "importAlias": "@ui",
+  "style": "nova"
+}

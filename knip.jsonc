@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/knip/schema-jsonc.json",
+  "rules": { "types": "off" },
+  "tags": ["-@wip"],
+  "workspaces": {
+    ".": {
+      "project": ["*.{js,mjs,cjs,ts,mts,cts}"],
+      "stryker": false,
+      "ignoreDependencies": [
+        "@angular-eslint/eslint-plugin",
+        "varlock",
+        "@varlock/bitwarden-plugin",
+        "vite",
+      ],
+    },
+    "apps/client": {
+      "entry": ["projects/ui/*/src/index.ts!"],
+      "ignoreBinaries": ["rustc", "lipo"],
+      "ignoreDependencies": ["@spartan-ng/cli"],
+    },
+    "apps/server": {
+      // Invoked directly by the Bun test script; imports use vite-plus/test.
+      "ignoreDependencies": ["vitest"],
+      "entry": ["src/bin.ts!"],
+      "project": ["src/**/*.ts!"],
+    },
+    "packages/*": {
+      "project": ["src/**/*.ts!"],
+      "includeEntryExports": true,
+    },
+  },
+}

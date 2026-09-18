@@ -1,0 +1,48 @@
+# Advisories against crates we do not depend on directly. Every entry below is
+# transitive through Tauri's own dependency tree, is already on the newest
+# release Tauri permits, and has no upgrade available to us. Re-check on the
+# ignoreUntil date: if Tauri has moved, drop the entry instead of extending it.
+#
+# Verify a claim with:  cargo tree -i <crate> -e normal --target all
+
+# glib::VariantStrIter unsoundness. Fixed in glib 0.20, but the fix lives on the
+# gtk4 line; Tauri's Linux backend (gtk 0.18.2 -> atk/tao/muda) pins the gtk3
+# line at glib 0.18.x, so 0.20 is not reachable. Linux-target only.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+ignoreUntil = 2026-12-10
+reason = "Transitive via tauri -> gtk 0.18 (Linux only). Fix is gtk4-line glib 0.20, unreachable while Tauri uses gtk3."
+
+# Unmaintained, no fixed version. Build-time proc macro only, pulled in by
+# glib-macros 0.18.5, so it ships no code in the app binary.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+ignoreUntil = 2026-12-10
+reason = "Unmaintained, no fix available. Build-time proc macro via glib-macros; not present at runtime."
+
+# unic-* 0.9.0: all unmaintained with no fixed version, all reached through
+# urlpattern 0.3.0 -> tauri-utils. Resolved when Tauri drops urlpattern.
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0075"
+ignoreUntil = 2026-12-10
+reason = "unic-char-range unmaintained, no fix. Transitive via tauri-utils -> urlpattern 0.3."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0080"
+ignoreUntil = 2026-12-10
+reason = "unic-common unmaintained, no fix. Transitive via tauri-utils -> urlpattern 0.3."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0081"
+ignoreUntil = 2026-12-10
+reason = "unic-char-property unmaintained, no fix. Transitive via tauri-utils -> urlpattern 0.3."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0098"
+ignoreUntil = 2026-12-10
+reason = "unic-ucd-version unmaintained, no fix. Transitive via tauri-utils -> urlpattern 0.3."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0100"
+ignoreUntil = 2026-12-10
+reason = "unic-ucd-ident unmaintained, no fix. Transitive via tauri-utils -> urlpattern 0.3."

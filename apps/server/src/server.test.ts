@@ -1,0 +1,235 @@
+import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
+import * as BunServices from "@effect/platform-bun/BunServices";
+import { AGENT_ENDPOINT, PROMPT_MAX_BYTES, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
+import { Console, Effect, Fiber } from "effect";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { runServer } from "./server.ts";
+
+/**
+ * Boots the real server on an ephemeral port; bin.test.ts covers executable lifecycle behavior.
+ */
+const start = () => {
+  const announced: string[] = [];
+  const recorder: Console.Console = Object.assign(Object.create(console), {
+    log: (...args: ReadonlyArray<unknown>) => announced.push(args.join(" ")),
+  });
+  const fiber = Effect.runFork(
+    runServer({ port: 0, sidecar: false }).pipe(
+      Effect.provideService(Console.Console, recorder),
+      Effect.provide(BunServices.layer),
+    ),
+  );
+
+  const url = (async () => {
+    const deadline = Date.now() + 5000;
+    while (announced.length === 0) {
+      if (Date.now() > deadline) throw new Error("Server never announced its address.");
+      await Bun.sleep(5);
+    }
+    const line = announced[0];
+    const match = /listening on (http:\/\/[^\s]+)/.exec(line);
+    if (!match) throw new Error(`Unexpected announcement: ${line}`);
+    return match[1];
+  })();
+
+  return {
+    url,
+    announced,
+    stop: () => Effect.runPromise(Fiber.interrupt(fiber)),
+  };
+};
+
+/** Installs deterministic stand-ins for the agent CLIs; tests never invoke a real agent. */
+const installAgents = async () => {
+  const directory = await mkdtemp(join(tmpdir(), "eitri-server-"));
+  await Bun.write(
+    join(directory, "codex"),
+    `#!/usr/bin/env bun
+const prompt = await Bun.stdin.text();
+console.log(prompt);
+`,
+  );
+  await chmod(join(directory, "codex"), 0o755);
+  await Bun.write(join(directory, "claude"), '#!/bin/sh\nprintf "login required" >&2\nexit 7\n');
+  await chmod(join(directory, "claude"), 0o755);
+  const path = process.env["PATH"];
+  process.env["PATH"] = `${directory}${delimiter}${path}`;
+  return {
+    uninstall: async () => {
+      if (path === undefined) delete process.env["PATH"];
+      else process.env["PATH"] = path;
+      await rm(directory, { recursive: true, force: true });
+    },
+  };
+};
+
+describe("HTTP routes", () => {
+  let agents: Awaited<ReturnType<typeof installAgents>>;
+  let server: ReturnType<typeof start>;
+  let url: string;
+
+  beforeAll(async () => {
+    agents = await installAgents();
+    server = start();
+    url = await server.url;
+  });
+
+  afterAll(async () => {
+    try {
+      await server?.stop();
+    } finally {
+      await agents?.uninstall();
+    }
+  });
+
+  const post = (body: string, headers: Record<string, string> = {}) =>
+    fetch(new URL(AGENT_ENDPOINT, url), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body,
+    });
+
+  it("announces the address it listens on", () => {
+    expect(server.announced[0]).toMatch(/^Server listening on http:\/\/127\.0\.0\.1:\d+\/?$/);
+    expect(new URL(url).hostname).toBe("127.0.0.1");
+  });
+
+  it("serves the shared request and answer contract", async () => {
+    const prompt = "--help\n$(literal) ä";
+    const response = await post(JSON.stringify({ agent: "codex", prompt }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toBe(prompt);
+  });
+
+  it("answers health checks", async () => {
+    const response = await fetch(new URL("/health", url));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "ok" });
+  });
+
+  it.each([" ", "ä".repeat(8001)])(
+    "rejects invalid input through the shared schema",
+    async (prompt) => {
+      const response = await post(JSON.stringify({ agent: "codex", prompt }));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toBe(PROMPT_RANGE_MESSAGE);
+    },
+  );
+
+  it("reports a failing CLI as a single-line answer", async () => {
+    const response = await post(JSON.stringify({ agent: "claude", prompt: "Hello" }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toBe("Agent exited with 7: login required");
+  });
+
+  it("survives a CLI exiting before reading a large prompt", async () => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await post(JSON.stringify({ agent: "claude", prompt: "x".repeat(12_000) }));
+      expect(await response.json()).toContain("Agent exited with 7: login required");
+      expect((await fetch(new URL("/health", url))).status).toBe(200);
+    }
+    expect(
+      await (await post(JSON.stringify({ agent: "codex", prompt: "still running" }))).json(),
+    ).toBe("still running");
+  });
+
+  it("rejects oversized request bodies", async () => {
+    const response = await post(" ".repeat(PROMPT_MAX_BYTES * 6 + 1025));
+    expect(response.status).toBe(413);
+  });
+
+  it("rejects malformed JSON and unknown agents", async () => {
+    for (const body of ["{", JSON.stringify({ agent: "unknown", prompt: "Hello" })]) {
+      const response = await post(body);
+      expect(response.status).toBe(400);
+      expect(typeof (await response.json())).toBe("string");
+    }
+  });
+
+  it("distinguishes unknown routes and unsupported methods", async () => {
+    expect((await fetch(new URL("/missing", url))).status).toBe(404);
+    for (const method of ["GET", "HEAD", "PUT", "PATCH", "DELETE"]) {
+      const response = await fetch(new URL(`${AGENT_ENDPOINT}?source=test`, url), { method });
+      expect(response.status).toBe(405);
+      expect(response.headers.get("Allow")).toBe("POST");
+    }
+  });
+
+  it.each([
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "http://localhost:1420",
+    "http://127.0.0.1:1420",
+  ])("allows JSON requests from %s", async (origin) => {
+    const endpoint = new URL(AGENT_ENDPOINT, url);
+    const preflight = await fetch(endpoint, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+      },
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+    expect(preflight.headers.get("Access-Control-Allow-Methods")).toBe("POST");
+    expect(preflight.headers.get("Access-Control-Allow-Headers")).toBe("Content-Type");
+    for (const prompt of ["Hello", " "]) {
+      const response = await post(JSON.stringify({ agent: "codex", prompt }), { Origin: origin });
+      expect(response.status).toBe(prompt.trim() ? 200 : 400);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+      expect(response.headers.get("Vary")).toBe("Origin");
+    }
+  });
+
+  it("echoes no origin, but still varies, for requests without one", async () => {
+    const response = await post(JSON.stringify({ agent: "codex", prompt: "no origin" }));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    expect(response.headers.get("Vary")).toBe("Origin");
+  });
+
+  it("allows the localhost server's own origin", async () => {
+    const response = await post(JSON.stringify({ agent: "codex", prompt: "same origin" }), {
+      Origin: url,
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toBe("same origin");
+  });
+
+  it("rejects matching foreign Host and Origin headers", async () => {
+    for (const method of ["OPTIONS", "POST"]) {
+      const response = await fetch(new URL(AGENT_ENDPOINT, url), {
+        method,
+        headers: {
+          Host: "untrusted.example:4318",
+          Origin: "http://untrusted.example:4318",
+          "Content-Type": "application/json",
+        },
+        ...(method === "POST" ? { body: JSON.stringify({ agent: "codex", prompt: "Hello" }) } : {}),
+      });
+      expect(response.status).toBe(403);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    }
+  });
+
+  it.each(["https://untrusted.example", "not-a-url"])(
+    "rejects %s before executing agent requests",
+    async (origin) => {
+      for (const method of ["OPTIONS", "POST"]) {
+        const response = await fetch(new URL(AGENT_ENDPOINT, url), {
+          method,
+          headers: { Origin: origin, "Content-Type": "application/json" },
+          ...(method === "POST"
+            ? { body: JSON.stringify({ agent: "codex", prompt: "Hello" }) }
+            : {}),
+        });
+        expect(response.status).toBe(403);
+        expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+      }
+    },
+  );
+});

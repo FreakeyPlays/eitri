@@ -1,0 +1,20 @@
+<button
+  hlmBtn
+  variant="ghost"
+  size="icon"
+  appAnimateIcon
+  class="gap-2 overflow-hidden aria-[current=page]:bg-accent group-data-[expanded=true]/rail:w-full group-data-[expanded=true]/rail:justify-start group-data-[expanded=true]/rail:px-[7px]"
+  [attr.aria-label]="label()"
+  [attr.aria-current]="active() ? 'page' : null"
+  [hlmTooltip]="label()"
+  position="right"
+  [tooltipDisabled]="expanded()"
+>
+  <ng-content />
+  @if (expanded()) {
+    <span
+      class="transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
+      >{{ label() }}</span
+    >
+  }
+</button>

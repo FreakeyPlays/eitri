@@ -1,0 +1,15 @@
+<div hlmSidebarHeader class="gap-1 p-1">
+  <app-sidebar-item #back label="Back to app" (click)="router.navigateByUrl('/')">
+    <i-arrow-left class="shrink-0" size="18" aria-hidden="true" [animate]="back.animate()" />
+  </app-sidebar-item>
+</div>
+<div hlmSidebarContent class="gap-1 p-1">
+  <app-sidebar-item #general label="General" active>
+    <i-sliders-horizontal
+      class="shrink-0"
+      size="18"
+      aria-hidden="true"
+      [animate]="general.animate()"
+    />
+  </app-sidebar-item>
+</div>

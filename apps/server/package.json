@@ -1,0 +1,23 @@
+{
+  "name": "@eitri/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp pack --watch --sourcemap --on-success \"bun dist/bin.mjs\"",
+    "build": "vp pack",
+    "typecheck": "tsc --noEmit",
+    "test": "bun --bun vitest run"
+  },
+  "dependencies": {
+    "@effect/platform-bun": "catalog:",
+    "@eitri/contracts": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

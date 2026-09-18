@@ -1,0 +1,28 @@
+<hlm-dialog
+  [state]="state()"
+  (stateChanged)="state.set($event)"
+  aria-labelledby="command-palette-title"
+>
+  <hlm-dialog-content *hlmDialogPortal="let ctx" class="w-96 p-0" [showCloseButton]="false">
+    <h2 hlmDialogTitle id="command-palette-title" class="sr-only">Command Palette</h2>
+    <hlm-command>
+      <hlm-command-input placeholder="Type a command or search..." />
+      <div *hlmCommandEmptyState hlmCommandEmpty>No results found.</div>
+      <hlm-command-list>
+        @for (group of groups(); track group.label) {
+          @if (!$first) {
+            <hlm-command-separator />
+          }
+          <hlm-command-group>
+            <span hlmCommandGroupLabel>{{ group.label }}</span>
+            @for (command of group.commands; track command) {
+              <button hlmCommandItem [value]="command.label" (selected)="run(command)">
+                {{ command.label }}
+              </button>
+            }
+          </hlm-command-group>
+        }
+      </hlm-command-list>
+    </hlm-command>
+  </hlm-dialog-content>
+</hlm-dialog>

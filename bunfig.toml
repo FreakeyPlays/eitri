@@ -1,0 +1,10 @@
+env = false
+
+[install]
+minimumReleaseAge = 259200
+minimumReleaseAgeExcludes = [
+  "vite-plus",
+  "@voidzero-dev/vite-plus-core",
+  "@voidzero-dev/vite-plus-darwin-arm64",
+]
+linker = "isolated"

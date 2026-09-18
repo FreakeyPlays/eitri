@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.angular/
+dist
+dist-ssr
+*.local
+npm-debug.log
+yarn-error.log
+
+# dotenv environment variable files
+.env.local
+.env.*.local
+env.d.ts
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.zed/*
+!.zed/settings.json
+!.zed/extensions.json
+!.zed/tasks.json
+.idea
+.DS_Store
+Thumbs.db
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# AI agent worktrees
+.claude/worktrees/
+
+# Visual regression
+**/__vis__/**/__diffs__
+**/__vis__/**/__results__
+
+# Code quality reports and isolated mutation sandboxes
+reports/
+coverage/
+.stryker-tmp/

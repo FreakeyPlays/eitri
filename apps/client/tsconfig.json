@@ -1,0 +1,55 @@
+{
+  "extends": "../../tsconfig.json",
+  "compileOnSave": false,
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "paths": {
+      "@core/*": ["./projects/desktop/src/app/core/*"],
+      "@features/*": ["./projects/desktop/src/app/features/*"],
+      "@pages/*": ["./projects/desktop/src/app/pages/*"],
+      "@shell/*": ["./projects/desktop/src/app/shell/*"],
+      "@ui/*": ["./projects/ui/*"],
+      "@ui/button": ["./projects/ui/button/src/index.ts"],
+      "@ui/utils": ["./projects/ui/utils/src/index.ts"],
+      "@ui/resizable": ["./projects/ui/resizable/src/index.ts"],
+      "@ui/sidebar": ["./projects/ui/sidebar/src/index.ts"],
+      "@ui/sidebar/*": ["./projects/ui/sidebar/src/lib/*"],
+      "@ui/tooltip": ["./projects/ui/tooltip/src/index.ts"],
+      "@ui/input": ["./projects/ui/input/src/index.ts"],
+      "@ui/separator": ["./projects/ui/separator/src/index.ts"],
+      "@ui/sheet": ["./projects/ui/sheet/src/index.ts"],
+      "@ui/skeleton": ["./projects/ui/skeleton/src/index.ts"],
+      "@ui/dialog": ["./projects/ui/dialog/src/index.ts"],
+      "@ui/command": ["./projects/ui/command/src/index.ts"],
+      "@ui/input-group": ["./projects/ui/input-group/src/index.ts"],
+      "@ui/textarea": ["./projects/ui/textarea/src/index.ts"]
+    }
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./scripts/tsconfig.json"
+    },
+    {
+      "path": "./projects/desktop/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/desktop/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/ui/tsconfig.json"
+    }
+  ]
+}

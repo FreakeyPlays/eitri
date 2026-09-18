@@ -1,0 +1,103 @@
+{
+  "name": "eitri",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "prepare": "vp config",
+    "dev:web": "vp run @eitri/client#dev",
+    "dev:desktop": "vp run @eitri/client#tauri dev",
+    "dev:server": "vp run @eitri/server#dev",
+    "build:web": "vp run @eitri/client#build",
+    "build:desktop": "vp run @eitri/client#tauri build",
+    "build:server": "vp run @eitri/server#build",
+    "test": "vp run -r --parallel --concurrency-limit 4 test",
+    "test:visual": "vp run @eitri/client#test:visual",
+    "test:visual:update": "vp run @eitri/client#test:visual:update",
+    "test:mutation": "stryker run",
+    "test:full": "vp run test && vp run test:mutation && vp run test:visual",
+    "knip": "knip",
+    "knip:production": "knip --production",
+    "deps:check": "depcruise packages apps scripts --output-type err-long",
+    "deps:graph": "mkdir -p reports && depcruise packages apps --include-only '^(packages/|apps/)' --output-type mermaid --output-to reports/dependencies.mmd",
+    "check:static": "vp run knip && vp run deps:check",
+    "check:type": "vp run -r typecheck",
+    "check:native": "vp run @eitri/client#tauri:check",
+    "ready": "vp check && vp run check:static && vp run check:type && vp run -r build",
+    "ready:full": "vp run ready && vp run check:native && vp run test:full",
+    "version": "bun scripts/release.ts version",
+    "version:preview": "bun scripts/release.ts version --dry",
+    "clean": "bun scripts/clean-workspace.ts"
+  },
+  "devDependencies": {
+    "@angular-eslint/eslint-plugin": "catalog:angular",
+    "@stryker-mutator/core": "10.0.0",
+    "@types/bun": "catalog:",
+    "@varlock/bitwarden-plugin": "^2.0.1",
+    "dependency-cruiser": "18.2.0",
+    "knip": "^6.35.1",
+    "typescript": "catalog:",
+    "varlock": "^1.19.0",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "overrides": {
+    "qs": "6.16.0",
+    "smol-toml": "1.8.0",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.0",
+      "onFail": "download"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "24.15.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "catalog": {
+    "@effect/platform-bun": "4.0.0-rc.115",
+    "@types/bun": "^1.4.2",
+    "@vitest/browser-playwright": "4.1.11",
+    "@vitest/coverage-v8": "4.1.11",
+    "effect": "4.0.0-rc.115",
+    "jsdom": "^30.0.1",
+    "playwright": "1.62.1",
+    "tslib": "^2.8.1",
+    "typescript": "~6.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.2",
+    "vite-plus": "0.3.2",
+    "vitest": "4.1.11"
+  },
+  "catalogs": {
+    "angular": {
+      "@angular/animations": "^22.1.6",
+      "@angular/build": "^22.1.8",
+      "@angular/cdk": "^22.1.6",
+      "@angular/cli": "^22.1.8",
+      "@angular/common": "^22.1.6",
+      "@angular/compiler": "^22.1.6",
+      "@angular/compiler-cli": "^22.1.6",
+      "@angular/core": "^22.1.6",
+      "@angular/platform-browser": "^22.1.6",
+      "@angular/router": "^22.1.6",
+      "@angular-eslint/eslint-plugin": "^22.5.0",
+      "rxjs": "~7.8.2"
+    }
+  },
+  "patchedDependencies": {
+    "@storybook/angular-vite@11.0.0-alpha.0": "patches/@storybook%2Fangular-vite@11.0.0-alpha.0.patch",
+    "@effect/platform-node-shared@4.0.0-rc.115": "patches/@effect%2Fplatform-node-shared@4.0.0-rc.115.patch"
+  }
+}

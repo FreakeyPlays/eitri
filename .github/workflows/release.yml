@@ -1,0 +1,165 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  RELEASE_BRANCH: release/main
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  release:
+    # CI also runs for fork PRs, and `branches` only matches the head branch name,
+    # so a fork's `main` would otherwise reach this write-scoped job.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Determine release
+        id: release
+        run: |
+          TAG="v$(jq -r .version package.json)"
+          if [ "$TAG" = "v0.0.0" ]; then exit 0; fi
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null ||
+            [ "$(git rev-parse "$TAG^{commit}")" = "$RELEASE_SHA" ]; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update release PR
+        if: steps.release.outputs.tag == ''
+        run: |
+          vp run version
+          if git diff --quiet; then exit 0; fi
+
+          TAG="v$(jq -r .version package.json)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$RELEASE_BRANCH"
+          git add -A
+          git commit -m "chore: release $TAG"
+          git push -f origin "$RELEASE_BRANCH"
+
+          PR=$(gh pr list --head "$RELEASE_BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --title "chore: release $TAG"
+          else
+            gh pr create --draft --base main --head "$RELEASE_BRANCH" \
+              --title "chore: release $TAG" \
+              --body "Merging this PR releases **$TAG** and creates the GitHub release."
+          fi
+
+  build_native:
+    name: Build native (${{ matrix.platform }})
+    needs: release
+    if: needs.release.outputs.tag != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin --bundles dmg
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            artifact-path: apps/client/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.rust-targets }}
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/client/src-tauri -> target
+
+      - name: Build native
+        run: vp run build:desktop ${{ matrix.args }}
+
+      - name: Save native installers
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ strategy.job-index }}
+          path: ${{ matrix.artifact-path }}
+          if-no-files-found: error
+          overwrite: true
+
+  publish:
+    name: Publish release
+    needs: [release, build_native]
+    if: needs.release.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      RELEASE_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Download native installers
+        run: gh run download "$RELEASE_RUN_ID" --pattern 'native-*' --dir dist
+
+      - name: Attach installers to draft release
+        run: |
+          ASSETS=()
+          while IFS= read -r -d '' FILE; do
+            ASSETS+=("$FILE")
+          done < <(find dist -type f -print0)
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo "No native installers downloaded" >&2
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${ASSETS[@]}" --draft --target "$RELEASE_SHA" --title "$RELEASE_TAG" --generate-notes
+          fi
+
+      - name: Publish release
+        run: gh release edit "$RELEASE_TAG" --draft=false

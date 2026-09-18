@@ -1,0 +1,19 @@
+diff --git a/dist/docgen/docgen-worker.js b/dist/docgen/docgen-worker.js
+index 4a51147f5431e4a11d423da5abbe27d57d24f5f7..ea195028614d735ae408c5952416978e6ba93ae4 100644
+--- a/dist/docgen/docgen-worker.js
++++ b/dist/docgen/docgen-worker.js
+@@ -990,8 +990,13 @@ var stripImportQualifiers = (text) => text.replace(/import\("[^"]*"\)\./g, ""),
+     }
+     if (ts.isTypeOperatorNode(typeNode))
+       return `${typeNode.operator === ts.SyntaxKind.KeyOfKeyword ? "keyof" : typeNode.operator === ts.SyntaxKind.ReadonlyKeyword ? "readonly" : "unique"} ${this.render(typeNode.type)}`;
+-    if (ts.isIndexedAccessTypeNode(typeNode))
++    if (ts.isIndexedAccessTypeNode(typeNode)) {
++      const resolved = this.checker.getTypeFromTypeNode(typeNode);
++      const selectable = ts.TypeFlags.StringLiteral | ts.TypeFlags.NumberLiteral | ts.TypeFlags.BooleanLiteral | ts.TypeFlags.Null | ts.TypeFlags.Undefined;
++      if (resolved.isUnion() && resolved.types.every((member) => member.flags & selectable))
++        return resolved.types.map((member) => this.renderCheckerType(member, typeNode)).join(" | ");
+       return `${this.render(typeNode.objectType)}[${this.render(typeNode.indexType)}]`;
++    }
+     if (ts.isTypeReferenceNode(typeNode)) {
+       let name = typeNode.typeName.getText(), symbol = this.checker.getSymbolAtLocation(typeNode.typeName);
+       symbol && this.addFromSymbol(symbol, name);

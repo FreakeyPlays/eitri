@@ -1,0 +1,9 @@
+[
+  {
+    "label": "bun run $ZED_CUSTOM_script",
+    "command": "bun",
+    "args": ["run", "$ZED_CUSTOM_script"],
+    "cwd": "$ZED_DIRNAME",
+    "tags": ["package-script"]
+  }
+]

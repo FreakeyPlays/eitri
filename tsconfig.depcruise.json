@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@core/*": ["./apps/client/projects/desktop/src/app/core/*"],
+      "@features/*": ["./apps/client/projects/desktop/src/app/features/*"],
+      "@pages/*": ["./apps/client/projects/desktop/src/app/pages/*"],
+      "@shell/*": ["./apps/client/projects/desktop/src/app/shell/*"],
+      "@ui/*": ["./apps/client/projects/ui/*/src/index.ts"]
+    }
+  }
+}
