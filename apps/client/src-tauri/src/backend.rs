@@ -21,6 +21,18 @@ struct Ready {
     url: String,
 }
 
+/// Resolved against the main binary's own directory by the shell plugin.
+///
+/// Linux packages stage the sidecar in `usr/libexec/eitri/` rather than beside
+/// the main binary, because AppImage's `linuxdeploy` rewrites the RPATH of
+/// every ELF file in `usr/bin`, which leaves a Bun-compiled executable
+/// unloadable. Other platforms keep the plain `externalBin` name.
+const SIDECAR: &str = if cfg!(target_os = "linux") {
+    "../libexec/eitri/eitri-server"
+} else {
+    "eitri-server"
+};
+
 impl Backend {
     /// Connects to the watched dev server, or starts the bundled server in packaged builds.
     pub async fn start(app: &tauri::AppHandle) -> Result<Self, Box<dyn std::error::Error>> {
@@ -35,7 +47,7 @@ impl Backend {
         }
         let (mut events, child) = app
             .shell()
-            .sidecar("eitri-server")?
+            .sidecar(SIDECAR)?
             .arg("--sidecar")
             .env("PORT", "0")
             .spawn()?;
@@ -103,5 +115,29 @@ impl Backend {
             }
         }
         self.stopped.store(true, Ordering::SeqCst);
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::SIDECAR;
+
+    /// The spawned path and the packaged path live in separate files, so a
+    /// rename in either one would otherwise only surface as a broken package.
+    #[test]
+    fn sidecar_path_resolves_to_the_packaged_location() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.linux.conf.json")).unwrap();
+        // The main binary is installed in `usr/bin`, so `..` lands in `usr`.
+        let packaged = SIDECAR.strip_prefix("..").expect("path must stay relative");
+        let packaged = format!("/usr{packaged}");
+
+        let linux = &config["bundle"]["linux"];
+        for format in ["appimage", "deb", "rpm"] {
+            assert!(
+                linux[format]["files"][&packaged].is_string(),
+                "{format} does not install the sidecar at {packaged}"
+            );
+        }
     }
 }

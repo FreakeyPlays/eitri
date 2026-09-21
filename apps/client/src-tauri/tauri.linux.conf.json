@@ -1,0 +1,11 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "bundle": {
+    "externalBin": [],
+    "linux": {
+      "appimage": { "files": { "/usr/libexec/eitri/eitri-server": "sidecar/linux/eitri-server" } },
+      "deb": { "files": { "/usr/libexec/eitri/eitri-server": "sidecar/linux/eitri-server" } },
+      "rpm": { "files": { "/usr/libexec/eitri/eitri-server": "sidecar/linux/eitri-server" } }
+    }
+  }
+}

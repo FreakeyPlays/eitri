@@ -63,7 +63,10 @@ if (command !== "version" || (flag !== undefined && flag !== "--dry") || extra.l
   process.exit(1);
 }
 
-const manifest = (await Bun.file("package.json").json()) as { version: string };
+const manifest = (await Bun.file("package.json").json()) as {
+  version: string;
+  workspaces: string[];
+};
 const current = manifest.version;
 const { bump, range } = await pending(current);
 
@@ -74,8 +77,19 @@ if (bump === null) {
   if (flag === "--dry") {
     console.log(`Pending release: ${current} → ${next} (${bump} from ${range})`);
   } else {
-    manifest.version = next;
-    await Bun.write("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
-    console.log(`Bumped ${current} → ${next} in package.json (${bump} from ${range})`);
+    const paths = new Set(["package.json"]);
+    for (const workspace of manifest.workspaces) {
+      for await (const path of new Bun.Glob(`${workspace}/package.json`).scan(".")) {
+        paths.add(path);
+      }
+    }
+    for (const path of paths) {
+      const pkg = (await Bun.file(path).json()) as { version: string };
+      pkg.version = next;
+      await Bun.write(path, `${JSON.stringify(pkg, null, 2)}\n`);
+    }
+    console.log(
+      `Bumped ${current} → ${next} in ${paths.size} package.json files (${bump} from ${range})`,
+    );
   }
 }
