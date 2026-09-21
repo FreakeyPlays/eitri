@@ -1,5 +1,5 @@
 [package]
-name = "desktop"
+name = "Eitri"
 version = "0.0.0"
 description = "Eitri desktop shell: the Tauri host for the Angular client."
 authors = ["Christoph Merck <78086475+FreakeyPlays@users.noreply.github.com>"]

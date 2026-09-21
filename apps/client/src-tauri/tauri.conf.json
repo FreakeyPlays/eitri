@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Eitri",
+  "productName": "eitri",
   "version": "../../../package.json",
   "identifier": "dev.chrismerck.eitri",
   "build": {
