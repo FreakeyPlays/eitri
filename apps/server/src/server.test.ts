@@ -1,8 +1,9 @@
-import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { basename, delimiter, join } from "node:path";
 import * as BunServices from "@effect/platform-bun/BunServices";
 import { AGENT_ENDPOINT, PROMPT_MAX_BYTES, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
+import { PROJECT_PATH_MESSAGE, PROJECTS_ENDPOINT } from "@eitri/contracts/project";
 import { Console, Effect, Fiber } from "effect";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { runServer } from "./server.ts";
@@ -10,13 +11,13 @@ import { runServer } from "./server.ts";
 /**
  * Boots the real server on an ephemeral port; bin.test.ts covers executable lifecycle behavior.
  */
-const start = () => {
+const start = (dataDir: string) => {
   const announced: string[] = [];
   const recorder: Console.Console = Object.assign(Object.create(console), {
     log: (...args: ReadonlyArray<unknown>) => announced.push(args.join(" ")),
   });
   const fiber = Effect.runFork(
-    runServer({ port: 0, sidecar: false }).pipe(
+    runServer({ port: 0, sidecar: false, dataDir }).pipe(
       Effect.provideService(Console.Console, recorder),
       Effect.provide(BunServices.layer),
     ),
@@ -68,11 +69,14 @@ console.log(prompt);
 describe("HTTP routes", () => {
   let agents: Awaited<ReturnType<typeof installAgents>>;
   let server: ReturnType<typeof start>;
+  let dataDir: string;
   let url: string;
 
   beforeAll(async () => {
     agents = await installAgents();
-    server = start();
+    // A throwaway directory; no test may reach the data of an installed Eitri.
+    dataDir = await mkdtemp(join(tmpdir(), "eitri-data-"));
+    server = start(dataDir);
     url = await server.url;
   });
 
@@ -81,6 +85,7 @@ describe("HTTP routes", () => {
       await server?.stop();
     } finally {
       await agents?.uninstall();
+      if (dataDir) await rm(dataDir, { recursive: true, force: true });
     }
   });
 
@@ -155,6 +160,125 @@ describe("HTTP routes", () => {
       expect(response.status).toBe(405);
       expect(response.headers.get("Allow")).toBe("POST");
     }
+  });
+
+  describe("projects", () => {
+    // A function, not a constant: the port is only known once the server started.
+    const projects = () => new URL(PROJECTS_ENDPOINT, url);
+    const openProject = (body: string, headers: Record<string, string> = {}) =>
+      fetch(new URL(PROJECTS_ENDPOINT, url), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body,
+      });
+    const snapshot = () => fetch(new URL(PROJECTS_ENDPOINT, url)).then((res) => res.json());
+
+    it("starts empty, then remembers what the user opened", async () => {
+      expect(await snapshot()).toEqual({ projects: [], activePath: null, notice: null });
+
+      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-project-")));
+      try {
+        const response = await openProject(JSON.stringify({ path: directory }));
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+          projects: [
+            { path: directory, name: basename(directory), lastOpenedAt: expect.any(String) },
+          ],
+          activePath: directory,
+          notice: null,
+        });
+        // A restart reads the same file, so the project is still the open one.
+        expect(await snapshot()).toMatchObject({ activePath: directory });
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+    it("keeps an unavailable project listed without opening it", async () => {
+      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-gone-")));
+      await openProject(JSON.stringify({ path: directory }));
+      await rm(directory, { recursive: true, force: true });
+
+      const restored = (await snapshot()) as {
+        projects: { path: string }[];
+        activePath: string | null;
+        notice: string | null;
+      };
+      expect(restored.activePath).toBeNull();
+      expect(restored.notice).toContain(directory);
+      expect(restored.projects.map((project) => project.path)).toContain(directory);
+    });
+
+    it.each([
+      { body: JSON.stringify({ path: "relative/path" }), expected: PROJECT_PATH_MESSAGE },
+      { body: JSON.stringify({ path: "/nope/missing" }), expected: "does not exist" },
+      { body: "{", expected: "JSON" },
+    ])("refuses $body with a message the picker can show", async ({ body, expected }) => {
+      const response = await openProject(body);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toContain(expected);
+    });
+
+    it("refuses a file that is not a folder", async () => {
+      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-file-")));
+      const file = join(directory, "README.md");
+      await Bun.write(file, "not a project");
+      try {
+        const response = await openProject(JSON.stringify({ path: file }));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toContain("is not a folder");
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+    it("reads and writes, and refuses everything else", async () => {
+      const preflight = await fetch(projects(), {
+        method: "OPTIONS",
+        headers: { Origin: "http://localhost:1420" },
+      });
+      expect(preflight.status).toBe(204);
+      expect(preflight.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, DELETE");
+
+      for (const method of ["PUT", "PATCH", "HEAD"]) {
+        const response = await fetch(projects(), { method });
+        expect(response.status).toBe(405);
+        expect(response.headers.get("Allow")).toBe("GET, POST, DELETE");
+      }
+    });
+
+    it("selects every project at once, and forgets one on request", async () => {
+      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-all-")));
+      try {
+        await openProject(JSON.stringify({ path: directory }));
+
+        const all = await openProject(JSON.stringify({ path: null }));
+        expect(all.status).toBe(200);
+        expect(await all.json()).toMatchObject({ activePath: null, notice: null });
+
+        const forgotten = await fetch(projects(), {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: directory }),
+        });
+        expect(forgotten.status).toBe(200);
+        // Other tests share this list, so only the forgotten entry must be gone.
+        const { projects: remaining } = (await forgotten.json()) as {
+          projects: { path: string }[];
+        };
+        expect(remaining.map((project) => project.path)).not.toContain(directory);
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses a foreign origin before reading any data", async () => {
+      const response = await fetch(projects(), {
+        headers: { Origin: "https://untrusted.example" },
+      });
+      expect(response.status).toBe(403);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    });
   });
 
   it.each([

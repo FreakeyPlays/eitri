@@ -3,14 +3,14 @@ import { AGENT_ENDPOINT, type AgentRequest } from "@eitri/contracts/agent";
 import { readAgentAnswer } from "@eitri/shared/agent";
 
 import { ClientService } from "@core/client/client.service";
+import { endpointUrl } from "@core/client/endpoint";
 
 @Service()
 export class AgentService {
   private readonly client = inject(ClientService);
 
   async ask(request: AgentRequest): Promise<string> {
-    const serverUrl = await this.client.getServerUrl();
-    const endpoint = serverUrl ? new URL(AGENT_ENDPOINT, serverUrl).href : AGENT_ENDPOINT;
+    const endpoint = endpointUrl(await this.client.getServerUrl(), AGENT_ENDPOINT);
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

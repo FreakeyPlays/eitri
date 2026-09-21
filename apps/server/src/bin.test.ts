@@ -1,8 +1,9 @@
 import type { Subprocess } from "bun";
-import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { AGENT_ENDPOINT } from "@eitri/contracts/agent";
+import { PROJECTS_ENDPOINT } from "@eitri/contracts/project";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 /**
@@ -24,7 +25,9 @@ describe.each(modes)("server executable (shutdown: $shutdown, watch: $watch)", (
   let url: string;
 
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "eitri-bin-"));
+    // Canonical from the start: a temporary directory is a symlink on macOS, and
+    // the backend answers with the resolved path.
+    directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-bin-")));
     // A deterministic installed CLI replacement; tests never invoke a real agent.
     await Bun.write(
       join(directory, "codex"),
@@ -46,7 +49,14 @@ if (prompt === "wait-for-shutdown") {
       ],
       {
         cwd: directory,
-        env: { ...process.env, PORT: "0", PATH: `${directory}${delimiter}${process.env["PATH"]}` },
+        env: {
+          ...process.env,
+          PORT: "0",
+          // Never the developer's own data: the executable would otherwise
+          // resolve the installed app's directory and write to it.
+          EITRI_DATA_DIR: join(directory, "userdata"),
+          PATH: `${directory}${delimiter}${process.env["PATH"]}`,
+        },
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
@@ -88,6 +98,18 @@ if (prompt === "wait-for-shutdown") {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toBe(prompt);
+  });
+
+  it("remembers a project in the data directory it was given", async () => {
+    const response = await fetch(new URL(PROJECTS_ENDPOINT, url), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: directory }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ activePath: directory, notice: null });
+    // Proof the executable resolved EITRI_DATA_DIR rather than a default location.
+    expect(await Bun.file(join(directory, "userdata", "projects.json")).exists()).toBe(true);
   });
 
   it("stops active CLI requests when the parent shuts down", async () => {

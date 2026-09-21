@@ -29,12 +29,15 @@ describe("ChatSidebarComponent", () => {
     expect(navigate.mock.calls).toEqual([["/settings"], ["/"]]);
   });
 
-  it("opens the add project dialog", async () => {
+  it("leaves choosing a project to the app bar's dropdown", async () => {
     const fixture = TestBed.createComponent(ChatSidebarComponent);
     await fixture.whenStable();
-    fixture.nativeElement.querySelector('button[aria-label="Add Project"]').click();
-    await fixture.whenStable();
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Add a project");
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('button[aria-label="Open Project"]')).toBeNull();
+    expect(
+      [...element.querySelectorAll("button")].map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["New Chat", "Settings"]);
   });
 
   it("keeps only the icon rail while collapsed", async () => {
@@ -45,6 +48,6 @@ describe("ChatSidebarComponent", () => {
     sidebarExpanded.set(false);
     await fixture.whenStable();
     expect(element.querySelector('[aria-label="Open chats"]')).toBeNull();
-    expect(element.querySelectorAll("button")).toHaveLength(3);
+    expect(element.querySelectorAll("button")).toHaveLength(2);
   });
 });

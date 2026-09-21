@@ -3,11 +3,18 @@ import * as BunHttpServer from "@effect/platform-bun/BunHttpServer";
 import { Console, Effect, Latch, Layer, Stdio, Stream } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpRoutes } from "./http.ts";
+import { makeProjectStore } from "./projects.ts";
 
-export const runServer = (options: { readonly port: number; readonly sidecar: boolean }) =>
+/** `dataDir` has no default here; only `bin.ts` decides which data a run may touch. */
+export const runServer = (options: {
+  readonly port: number;
+  readonly sidecar: boolean;
+  readonly dataDir: string;
+}) =>
   Effect.gen(function* () {
     const shutdown = yield* Latch.make();
-    const Server = HttpRouter.serve(HttpRoutes(shutdown), {
+    const projects = makeProjectStore(options.dataDir);
+    const Server = HttpRouter.serve(HttpRoutes({ shutdown, projects }), {
       disableLogger: false,
       disableListenLog: true,
     }).pipe(

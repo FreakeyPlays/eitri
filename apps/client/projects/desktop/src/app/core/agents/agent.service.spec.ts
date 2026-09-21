@@ -14,6 +14,7 @@ describe("Agent backend", () => {
           provide: ClientService,
           useValue: {
             getServerUrl: async () => "",
+            selectDirectory: null,
           } satisfies ClientService,
         },
       ],
@@ -26,6 +27,7 @@ describe("Agent backend", () => {
     TestBed.overrideProvider(ClientService, {
       useValue: {
         getServerUrl: async () => serverUrl,
+        selectDirectory: null,
       } satisfies ClientService,
     });
     fetch.mockImplementation(async () => Response.json("HTTP answer"));

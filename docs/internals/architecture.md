@@ -32,6 +32,9 @@ does yet. The RPC and WebSocket parts are the planned next step.
 - **Server** (`apps/server`): validates requests, selects the installed Agent CLI,
   passes the prompt through stdin, and returns its completed output. Owns process
   execution, timeouts, and cleanup. Each request starts a fresh conversation.
+  It also owns the user's data directory: the projects they opened live in
+  `projects.json` there, so every client of one Eitri sees the same history.
+  See [User data](user-data.md).
 - **Contracts** (`packages/contracts`): shared schemas, derived types, and endpoint
   constants defining what crosses the client/server boundary. Keep execution and
   application state in the applications.
@@ -48,7 +51,9 @@ does yet. The RPC and WebSocket parts are the planned next step.
 ```mermaid
 flowchart TB
     UI[Angular frontend] -->|POST /api/agent| H[Bun HTTP server]
+    UI -->|GET and POST /api/projects| H
     H --> S[TypeScript agent adapter]
+    H --> P[Project list in the data directory]
     S --> C[Installed Agent CLI]
     UI -->|First request: get_server_url| T[Tauri shell]
     T -->|Start and stop sidecar| H
@@ -68,7 +73,8 @@ binaries under their own triples, because Tauri builds each architecture separat
 and join them with `lipo`. Neither a separate Bun runtime nor a JavaScript resource
 is shipped.
 
-Project workflows, persistent chats, and remote access are not implemented yet.
+Choosing a project and returning to an earlier one works; chats inside a project,
+the rest of the project workflow, and remote access are not implemented yet.
 
 Keep presentation in the UI and process integration inside the server adapter.
 See the [workspace guide](workspace.md) for import conventions.

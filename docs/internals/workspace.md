@@ -11,8 +11,8 @@ Reusable Spartan Helm components live in `apps/client/projects/ui` and are impor
 
 ## packages
 
-- `packages/contracts` (`@eitri/contracts`): shared Effect schemas and derived types. Anything both a client and the backend must agree on belongs here, including the wire constants (`AGENT_ENDPOINT`) that name where a request goes.
-- `packages/shared` (`@eitri/shared`): framework-independent behavior derived from those contracts, currently validating agent input and reading agent replies.
+- `packages/contracts` (`@eitri/contracts`): shared Effect schemas and derived types. Anything both a client and the backend must agree on belongs here, including the wire constants (`AGENT_ENDPOINT`, `PROJECTS_ENDPOINT`) that name where a request goes.
+- `packages/shared` (`@eitri/shared`): framework-independent behavior derived from those contracts, currently validating agent and project input and reading their replies.
 
 ## Other top-level directories
 
@@ -21,6 +21,6 @@ Reusable Spartan Helm components live in `apps/client/projects/ui` and are impor
 
 ## Import conventions
 
-`@eitri/shared` and `@eitri/contracts` currently export `./agent`, with no root export. Import the explicit subpath. Files that are not exported are implementation details.
+`@eitri/shared` and `@eitri/contracts` currently export `./agent` and `./project`, with no root export. Import the explicit subpath. Files that are not exported are implementation details.
 
 See [Architecture](architecture.md) for runtime boundaries and planned responsibilities.

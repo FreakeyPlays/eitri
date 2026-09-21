@@ -2,14 +2,6 @@
   <app-sidebar-item #newChat label="New Chat" (click)="router.navigateByUrl('/')">
     <i-square-pen class="shrink-0" size="18" aria-hidden="true" [animate]="newChat.animate()" />
   </app-sidebar-item>
-  <app-sidebar-item #addProjectItem label="Add Project" (click)="addProject()">
-    <i-folder-plus
-      class="shrink-0"
-      size="18"
-      aria-hidden="true"
-      [animate]="addProjectItem.animate()"
-    />
-  </app-sidebar-item>
 </div>
 <div hlmSidebarContent>
   @if (expanded()) {

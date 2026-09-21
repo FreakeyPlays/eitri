@@ -55,7 +55,7 @@ describe("ShellComponent", () => {
     await fixture.whenStable();
     expect(element.querySelector("#shell-sidebar")).not.toBeNull();
     expect(element.querySelector('[aria-label="Open chats"]')).toBeNull();
-    for (const label of ["New Chat", "Add Project", "Settings"]) {
+    for (const label of ["New Chat", "Settings"]) {
       expect(button(label).textContent?.trim()).toBe("");
     }
     button("Expand sidebar").click();

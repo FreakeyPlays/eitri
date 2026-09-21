@@ -3,17 +3,20 @@ import { ClientService } from "./client.service";
 import { TauriClient } from "./tauri-client";
 import { WebClient } from "./web-client";
 
-const { isTauri, invoke } = vi.hoisted(() => ({
+const { isTauri, invoke, open } = vi.hoisted(() => ({
   isTauri: vi.fn<() => boolean>(),
   invoke: vi.fn<(command: string) => Promise<string | null>>(),
+  open: vi.fn<(options: unknown) => Promise<string | string[] | null>>(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri, invoke }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open }));
 
 describe("Client", () => {
   beforeEach(() => {
     isTauri.mockReset();
     invoke.mockReset();
+    open.mockReset();
     TestBed.configureTestingModule({});
   });
 
@@ -38,6 +41,29 @@ describe("Client", () => {
     isTauri.mockReturnValue(true);
     invoke.mockResolvedValue(null);
     expect(await TestBed.inject(ClientService).getServerUrl()).toBe("");
+  });
+
+  it("picks one folder through the desktop dialog", async () => {
+    isTauri.mockReturnValue(true);
+    open.mockResolvedValue("/git/eitri");
+
+    expect(await TestBed.inject(ClientService).selectDirectory!()).toBe("/git/eitri");
+    expect(open).toHaveBeenCalledExactlyOnceWith({ directory: true, multiple: false });
+  });
+
+  it.each([null, []])("reports the dismissed dialog (%j) as no choice", async (dismissed) => {
+    isTauri.mockReturnValue(true);
+    open.mockResolvedValue(dismissed);
+
+    expect(await TestBed.inject(ClientService).selectDirectory!()).toBeNull();
+  });
+
+  it("offers no picker in the browser, which cannot browse the server's folders", () => {
+    isTauri.mockReturnValue(false);
+
+    // Null the capability, not a picker that resolves null: the UI asks for a path instead.
+    expect(TestBed.inject(ClientService).selectDirectory).toBeNull();
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("resolves the server URL once and shares it with later callers", async () => {

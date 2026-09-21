@@ -1,0 +1,104 @@
+<hlm-command>
+  @if (projects.projects().length) {
+    <hlm-command-input placeholder="Search projects..." />
+  }
+
+  @if (projects.notice(); as notice) {
+    <p class="px-2 py-1.5 text-xs text-muted-foreground" role="status">{{ notice }}</p>
+  }
+
+  @if (projects.error(); as error) {
+    <div class="flex flex-col gap-1.5 px-2 py-1.5 text-xs text-destructive" role="alert">
+      <span>{{ error }}</span>
+      <button
+        hlmBtn
+        variant="outline"
+        size="sm"
+        class="self-start"
+        [disabled]="projects.busy()"
+        (click)="retry()"
+      >
+        Try again
+      </button>
+    </div>
+  }
+
+  @if (projects.projects().length) {
+    <div *hlmCommandEmptyState hlmCommandEmpty class="py-4 text-xs">No project matches.</div>
+    <hlm-command-list class="mt-2">
+      @if (showAllProjects()) {
+        <button
+          hlmCommandItem
+          value="All projects"
+          [attr.aria-current]="projects.allSelected() ? 'true' : null"
+          (selected)="chooseAll()"
+        >
+          <span class="min-w-0 flex-1 truncate text-start">All projects</span>
+          @if (projects.allSelected()) {
+            <span class="text-xs text-muted-foreground">Open</span>
+          }
+        </button>
+        <hlm-command-separator class="my-1" />
+      }
+
+      @for (project of projects.projects(); track project.path) {
+        <div class="group/row relative">
+          <button
+            hlmCommandItem
+            class="pe-8"
+            [value]="project.name + ' ' + project.path"
+            [title]="project.path"
+            [attr.aria-current]="project.path === projects.active()?.path ? 'true' : null"
+            (selected)="choose(project.path)"
+          >
+            <span class="min-w-0 flex-1 truncate text-start">{{ project.name }}</span>
+            @if (project.path === projects.active()?.path) {
+              <span class="text-xs text-muted-foreground">Open</span>
+            }
+          </button>
+          <button
+            type="button"
+            class="absolute end-1 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 disabled:pointer-events-none"
+            [attr.aria-label]="'Remove ' + project.name + ' from the list'"
+            [disabled]="projects.busy()"
+            (click)="forget(project.path)"
+          >
+            <i-x size="14" aria-hidden="true" />
+          </button>
+        </div>
+      }
+    </hlm-command-list>
+  } @else if (!projects.error()) {
+    <p class="px-2 py-1.5 text-xs text-muted-foreground">
+      No projects yet. Open a folder to start working in it.
+    </p>
+  }
+
+  <hlm-command-separator />
+
+  @if (projects.canBrowse) {
+    <button
+      hlmBtn
+      variant="ghost"
+      size="sm"
+      class="mt-1 w-full justify-start font-normal"
+      [disabled]="projects.busy()"
+      (click)="browse()"
+    >
+      Open folder…
+    </button>
+  } @else {
+    <form class="mt-1 flex items-center gap-1.5" (submit)="submitPath($event, path.value)">
+      <input
+        #path
+        hlmInput
+        name="path"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="/path/to/project"
+        aria-label="Project folder path on the server"
+      />
+      <button hlmBtn size="sm" type="submit" [disabled]="projects.busy()">Open</button>
+    </form>
+  }
+</hlm-command>

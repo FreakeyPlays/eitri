@@ -3,7 +3,13 @@ import { Router } from "@angular/router";
 import type { Command } from "@shell/commands/command";
 import { LayoutService } from "@shell/layout/layout.service";
 
-/** Commands the palette offers on every page. Page commands live in each `*.page.ts`. */
+/**
+ * Commands the palette offers on every page. Page commands live in each `*.page.ts`.
+ *
+ * Projects are deliberately absent: the dropdown on the app bar's project name is
+ * the one place to switch, and a palette command cannot open a menu anchored to
+ * that button without a second way to reach the same list.
+ */
 export const appCommands: readonly Command[] = [
   {
     group: "Navigation",

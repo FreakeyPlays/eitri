@@ -56,14 +56,14 @@ describe("CommandPaletteComponent", () => {
   it("lists the app commands, then the open page's commands", async () => {
     const { press, items, groups } = await render();
     await press({ metaKey: true });
-    expect(groups()).toEqual(["Navigation", "Workspace", "Projects"]);
+    // No project commands: the app bar's dropdown is the only way to switch.
+    expect(groups()).toEqual(["Navigation", "Workspace"]);
     expect(items()).toEqual([
       "New Chat",
       "Settings",
       "Toggle sidebar",
       "Toggle terminal",
       "Toggle right panel",
-      "Add Project",
     ]);
   });
 
@@ -86,11 +86,5 @@ describe("CommandPaletteComponent", () => {
     await select("Toggle terminal");
     expect(TestBed.inject(LayoutService).isOpen("bottom")).toBe(true);
     await vi.waitFor(() => expect(items()).toEqual([]));
-
-    await press({ metaKey: true });
-    await select("Add Project");
-    await vi.waitFor(() =>
-      expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Add a project"),
-    );
   });
 });

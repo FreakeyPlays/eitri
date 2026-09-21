@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 
 export class TauriClient {
   private serverUrl: Promise<string> | undefined;
@@ -11,4 +12,10 @@ export class TauriClient {
         throw error;
       }));
   }
+
+  /** The desktop folder picker; null while the dialog is dismissed. */
+  readonly selectDirectory = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    return typeof selected === "string" ? selected : null;
+  };
 }
