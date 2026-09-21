@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist/desktop/browser",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "vp run --parallel --filter @eitri/client --filter @eitri/server dev",
+    "beforeDevCommand": "vp run @eitri/client#sidecar && vp run --parallel --filter @eitri/client --filter @eitri/server dev",
     "beforeBuildCommand": "vp run @eitri/client#sidecar && vp run @eitri/client#build"
   },
   "app": {

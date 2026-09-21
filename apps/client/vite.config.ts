@@ -18,6 +18,10 @@ export default mergeConfig(
           command: "bun scripts/prepare-sidecar.ts",
           dependsOn: ["@eitri/server#build"],
           env: ["TAURI_ENV_TARGET_TRIPLE"],
+          // Bun reads the staging script through its own loader, which file
+          // tracking misses, so a changed staging layout would replay a stale
+          // sidecar from the cache instead of being rebuilt.
+          input: [{ auto: true }, "scripts/**"],
           output: ["src-tauri/sidecar/**"],
         },
         "tauri:check": {
