@@ -1,6 +1,6 @@
 import { computed, inject, Service, signal } from "@angular/core";
 import { FOLDERS_ENDPOINT, type FolderListing } from "@eitri/contracts/folder";
-import { type Project, PROJECTS_ENDPOINT } from "@eitri/contracts/project";
+import { type OpenedProject, type Project, PROJECTS_ENDPOINT } from "@eitri/contracts/project";
 import {
   readBrowseFoldersFailure,
   readFolderListing,
@@ -60,19 +60,9 @@ export class ProjectService {
   }
 
   async open(path: string): Promise<boolean> {
-    if (this.busy()) return false;
-    let request: unknown;
-    try {
-      request = toOpenProjectRequest(path);
-    } catch (error: unknown) {
-      this.failure.set(messageOf(error));
-      return false;
-    }
-    const opened = await this.request("POST", request, readOpenedProject);
-    if (!opened) return false;
-    this.known.set({ projects: opened.projects, selectedId: opened.openedProjectId, notice: null });
-    this.remember(opened.openedProjectId);
-    return true;
+    const opened = await this.mutate("POST", () => toOpenProjectRequest(path), readOpenedProject);
+    if (opened) this.select(opened);
+    return opened !== null;
   }
 
   /** Selecting every project is local client state and performs no server request. */
@@ -86,37 +76,28 @@ export class ProjectService {
 
   /** Names one project for every client. The folder on disk is never touched. */
   async rename(id: string, name: string): Promise<boolean> {
-    if (this.busy()) return false;
-    let request: unknown;
-    try {
-      request = toRenameProjectRequest(id, name);
-    } catch (error: unknown) {
-      this.failure.set(messageOf(error));
-      return false;
-    }
-    const snapshot = await this.request("PATCH", request, readProjects);
+    const snapshot = await this.mutate(
+      "PATCH",
+      () => toRenameProjectRequest(id, name),
+      readProjects,
+    );
     if (!snapshot) return false;
     this.known.update((known) => ({ ...known, projects: snapshot.projects, notice: null }));
     return true;
   }
 
+  /** Forgetting the selected project widens the scope to all projects. */
   async forget(id: string): Promise<boolean> {
-    if (this.busy()) return false;
-    let request: unknown;
-    try {
-      request = toForgetProjectRequest(id);
-    } catch (error: unknown) {
-      this.failure.set(messageOf(error));
-      return false;
-    }
-    const snapshot = await this.request("DELETE", request, readProjects);
+    const snapshot = await this.mutate("DELETE", () => toForgetProjectRequest(id), readProjects);
     if (!snapshot) return false;
-    const currentId = this.known().selectedId;
-    const selectedId = snapshot.projects.some((project) => project.id === currentId)
-      ? currentId
-      : null;
-    this.known.set({ projects: snapshot.projects, selectedId, notice: null });
-    if (selectedId === null) this.remember(null);
+    const { selectedId } = this.known();
+    const kept = snapshot.projects.some((project) => project.id === selectedId);
+    this.known.set({
+      projects: snapshot.projects,
+      selectedId: kept ? selectedId : null,
+      notice: null,
+    });
+    if (!kept) this.remember(null);
     return true;
   }
 
@@ -149,7 +130,7 @@ export class ProjectService {
   private async restore(): Promise<void> {
     this.restoring.set(true);
     try {
-      const snapshot = await this.request("GET", undefined, readProjects);
+      const snapshot = await this.request("GET", () => undefined, readProjects);
       if (!snapshot) {
         this.started = undefined;
         return;
@@ -171,7 +152,7 @@ export class ProjectService {
 
       const opened = await this.request(
         "POST",
-        toOpenProjectRequest(selected.path),
+        () => toOpenProjectRequest(selected.path),
         readOpenedProject,
       );
       if (!opened) {
@@ -186,27 +167,40 @@ export class ProjectService {
         this.remember(null);
         return;
       }
-      this.known.set({
-        projects: opened.projects,
-        selectedId: opened.openedProjectId,
-        notice: null,
-      });
-      this.remember(opened.openedProjectId);
+      this.select(opened);
     } finally {
       this.restoring.set(false);
     }
   }
 
-  /** One collection request at a time; its failure becomes `error` for the menu to show. */
+  private select(opened: OpenedProject) {
+    this.known.set({ projects: opened.projects, selectedId: opened.openedProjectId, notice: null });
+    this.remember(opened.openedProjectId);
+  }
+
+  /** A user action: refused while anything else, including restoring, is still running. */
+  private mutate<T>(
+    method: "POST" | "PATCH" | "DELETE",
+    body: () => unknown,
+    read: (reply: unknown) => T,
+  ): Promise<T | null> {
+    return this.busy() ? Promise.resolve(null) : this.request(method, body, read);
+  }
+
+  /**
+   * One collection request at a time. `body` builds and validates the request, so an
+   * invalid one never reaches the server; any failure becomes `error` for the menu.
+   */
   private async request<T>(
     method: "GET" | "POST" | "PATCH" | "DELETE",
-    body: unknown,
+    body: () => unknown,
     read: (reply: unknown) => T,
   ): Promise<T | null> {
     if (this.pending()) return null;
     this.pending.set(true);
     this.failure.set(null);
     try {
+      const payload = body();
       const reply = await this.call(
         PROJECTS_ENDPOINT,
         method === "GET"
@@ -214,7 +208,7 @@ export class ProjectService {
           : {
               method,
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
+              body: JSON.stringify(payload),
             },
       );
       if (!reply.ok) {

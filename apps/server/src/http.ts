@@ -13,7 +13,6 @@ import {
   ProjectsFailureSchema,
   ProjectsSchema,
   RenameProjectRequestSchema,
-  UpdateProjectPathRequestSchema,
 } from "@eitri/contracts/project";
 import { Effect, type Latch, Layer, Schema } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
@@ -82,7 +81,6 @@ const encodeOpenedProject = Schema.encodeSync(OpenedProjectSchema);
 const encodeFailure = Schema.encodeSync(ProjectsFailureSchema);
 const decodeOpen = Schema.decodeUnknownEffect(OpenProjectRequestSchema);
 const decodeForget = Schema.decodeUnknownEffect(ForgetProjectRequestSchema);
-const decodeUpdate = Schema.decodeUnknownEffect(UpdateProjectPathRequestSchema);
 const decodeRename = Schema.decodeUnknownEffect(RenameProjectRequestSchema);
 const decodeFolderRequest = Schema.decodeUnknownEffect(BrowseFoldersRequestSchema);
 
@@ -164,17 +162,11 @@ const forgetProjectHandler = (store: ProjectStore) =>
     }),
   );
 
-/** One update route: a body carrying a name renames, one carrying a path relocates. */
-const updateProjectHandler = (store: ProjectStore) =>
+const renameProjectHandler = (store: ProjectStore) =>
   projectsAnswer(
     Effect.gen(function* () {
-      const body = yield* projectJson;
-      if (typeof body === "object" && body !== null && "name" in body) {
-        const { id, name } = yield* decoded(decodeRename, body);
-        return yield* store.rename(id, name);
-      }
-      const { id, path } = yield* decoded(decodeUpdate, body);
-      return yield* store.updatePath(id, path);
+      const { id, name } = yield* projectBody(decodeRename);
+      return yield* store.rename(id, name);
     }),
   );
 
@@ -234,7 +226,7 @@ export const HttpRoutes = (options: {
         case "POST":
           return selectProjectHandler(options.projects);
         case "PATCH":
-          return updateProjectHandler(options.projects);
+          return renameProjectHandler(options.projects);
         case "DELETE":
           return forgetProjectHandler(options.projects);
         case "OPTIONS":

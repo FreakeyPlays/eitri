@@ -47,3 +47,9 @@ Implemented stable UUID project identity, ID-based project operations, backend-s
 Integrated validation passed: the root unit suite ran 32 files and 268 tests with zero failures; all six typecheck tasks, formatting for 257 files, Knip and dependency-cruiser passed. `vp check` reported three existing warnings in untouched shared UI files. Earlier focused server/client builds also passed; the client build retained its existing 715 kB versus 500 kB bundle-budget warning.
 
 Manual testing remains: verify two client instances keep independent selections, selection survives a desktop restart with an ephemeral port, missing/forgotten selections fall back clearly, failed opens preserve selection, and native desktop picking still works.
+
+## Revision — 2026-09-22
+
+Relocation is gone: `PATCH /api/projects` only renames. Nothing in any client
+moved a project, so the path update, its contract and its conflict rule were
+unused. Stable IDs remain, so relocation can return once chats reference projects.

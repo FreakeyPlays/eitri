@@ -10,14 +10,11 @@ import {
   ProjectsSchema,
   type RenameProjectRequest,
   RenameProjectRequestSchema,
-  type UpdateProjectPathRequest,
-  UpdateProjectPathRequestSchema,
 } from "@eitri/contracts/project";
 import * as Schema from "effect/Schema";
 
 const decodeOpen = Schema.decodeUnknownSync(OpenProjectRequestSchema);
 const decodeForget = Schema.decodeUnknownSync(ForgetProjectRequestSchema);
-const decodeUpdate = Schema.decodeUnknownSync(UpdateProjectPathRequestSchema);
 const decodeRename = Schema.decodeUnknownSync(RenameProjectRequestSchema);
 const decodeProjects = Schema.decodeUnknownSync(ProjectsSchema);
 const decodeOpened = Schema.decodeUnknownSync(OpenedProjectSchema);
@@ -46,14 +43,6 @@ export function toForgetProjectRequest(id: string): ForgetProjectRequest {
 export function toRenameProjectRequest(id: string, name: string): RenameProjectRequest {
   try {
     return decodeRename({ id, name: name.trim() });
-  } catch (error: unknown) {
-    throw sentence(error);
-  }
-}
-
-export function toUpdateProjectPathRequest(id: string, path: string): UpdateProjectPathRequest {
-  try {
-    return decodeUpdate({ id, path });
   } catch (error: unknown) {
     throw sentence(error);
   }

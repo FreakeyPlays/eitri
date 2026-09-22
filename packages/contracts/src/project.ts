@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import { ABSOLUTE_PATH } from "@eitri/contracts/folder";
 
 /** Route served by `@eitri/server` and proxied by the Angular dev server. */
 export const PROJECTS_ENDPOINT = "/api/projects";
@@ -11,7 +12,6 @@ export const PROJECT_NAME_MESSAGE =
 /** The longest name a project may carry, so one entry cannot crowd out the list. */
 export const PROJECT_NAME_MAX = 100;
 
-const ABSOLUTE_PATH = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const PathSchema = Schema.String.check(
@@ -54,13 +54,6 @@ export const RenameProjectRequestSchema = Schema.Struct({
   name: ProjectNameSchema,
 });
 export type RenameProjectRequest = typeof RenameProjectRequestSchema.Type;
-
-/** Relocates a known project while preserving its identity. */
-export const UpdateProjectPathRequestSchema = Schema.Struct({
-  id: ProjectIdSchema,
-  path: PathSchema,
-});
-export type UpdateProjectPathRequest = typeof UpdateProjectPathRequestSchema.Type;
 
 const ProjectSchema = Schema.Struct({
   id: ProjectIdSchema,

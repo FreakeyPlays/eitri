@@ -9,7 +9,6 @@ import {
   PROJECT_PATH_MESSAGE,
   ProjectsSchema,
   RenameProjectRequestSchema,
-  UpdateProjectPathRequestSchema,
 } from "./project.ts";
 
 const project = {
@@ -55,17 +54,9 @@ describe("RenameProjectRequestSchema", () => {
 
 describe("project ID requests", () => {
   const decodeForget = Schema.decodeUnknownSync(ForgetProjectRequestSchema);
-  const decodeUpdate = Schema.decodeUnknownSync(UpdateProjectPathRequestSchema);
 
   it("forgets a project by stable ID", () => {
     expect(decodeForget({ id: project.id })).toEqual({ id: project.id });
-  });
-
-  it("relocates a project without changing its identity", () => {
-    expect(decodeUpdate({ id: project.id, path: "/git/moved" })).toEqual({
-      id: project.id,
-      path: "/git/moved",
-    });
   });
 
   it.each([null, undefined, "eitri", "/git/eitri", "00000000-0000-0000-0000-000000000000"])(
@@ -74,10 +65,6 @@ describe("project ID requests", () => {
       expect(() => decodeForget({ id })).toThrow();
     },
   );
-
-  it("rejects a relative relocation path", () => {
-    expect(() => decodeUpdate({ id: project.id, path: "git/moved" })).toThrow(PROJECT_PATH_MESSAGE);
-  });
 });
 
 describe("project replies", () => {

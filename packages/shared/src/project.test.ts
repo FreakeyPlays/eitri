@@ -7,7 +7,6 @@ import {
   toForgetProjectRequest,
   toOpenProjectRequest,
   toRenameProjectRequest,
-  toUpdateProjectPathRequest,
 } from "./project.ts";
 
 const id = "ca0dcace-34da-4b44-8364-13ce54a32e44";
@@ -25,10 +24,6 @@ describe("project requests", () => {
 
   it("forgets a project by stable ID", () => {
     expect(toForgetProjectRequest(id)).toEqual({ id });
-  });
-
-  it("updates a project's path while retaining its ID", () => {
-    expect(toUpdateProjectPathRequest(id, "/git/moved")).toEqual({ id, path: "/git/moved" });
   });
 
   it("trims a chosen name before validating it", () => {

@@ -107,16 +107,16 @@ describe("ProjectSettingsComponent", () => {
     expect(element.querySelector('[role="alert"]')?.textContent).toContain("not in the list");
   });
 
-  it("removes the project only after confirming", async () => {
+  it("removes the project from Eitri only after confirming", async () => {
     const { fixture, element, button } = await render();
 
-    button("Remove Project")!.click();
+    button("Remove from Eitri")!.click();
     fixture.detectChanges();
 
     expect(forget).not.toHaveBeenCalled();
-    expect(element.textContent).toContain("Are you sure");
+    expect(element.textContent).toContain("Remove this project from Eitri?");
 
-    button("Yes, delete it!")!.click();
+    button("Remove")!.click();
     await vi.waitFor(() => expect(forget).toHaveBeenCalledExactlyOnceWith(eitri.id));
     await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
@@ -127,7 +127,7 @@ describe("ProjectSettingsComponent", () => {
 
     expect(field.disabled).toBe(true);
     expect(button("Save")!.disabled).toBe(true);
-    expect(button("Remove Project")!.disabled).toBe(true);
+    expect(button("Remove from Eitri")!.disabled).toBe(true);
     expect(rename).not.toHaveBeenCalled();
   });
 });

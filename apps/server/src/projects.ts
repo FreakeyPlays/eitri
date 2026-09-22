@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { access, constants, mkdir, realpath, stat } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { Database } from "bun:sqlite";
 import type { OpenedProject, Project, Projects } from "@eitri/contracts/project";
 import { Data, Effect, Semaphore } from "effect";
+import { folderProblem, readableFolder } from "./folders.ts";
 
 const DATABASE_VERSION = 1;
 const BUSY_TIMEOUT_MS = 2_000;
@@ -19,15 +20,10 @@ export interface ProjectStore {
   readonly open: (path: string) => Effect.Effect<OpenedProject, ProjectsError>;
   readonly forget: (id: string) => Effect.Effect<Projects, ProjectsError>;
   readonly rename: (id: string, name: string) => Effect.Effect<Projects, ProjectsError>;
-  readonly updatePath: (id: string, path: string) => Effect.Effect<Projects, ProjectsError>;
   readonly close: Effect.Effect<void, ProjectsError>;
 }
 
 const reason = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
-const codeOf = (cause: unknown) =>
-  typeof cause === "object" && cause !== null && "code" in cause
-    ? String((cause as { code: unknown }).code)
-    : undefined;
 const displayName = (path: string) => basename(path) || path;
 
 const validateCurrentSchema = (db: Database, file: string) => {
@@ -167,27 +163,9 @@ export const makeProjectStore = (dataDir: string): ProjectStore => {
 
   const canonicalize = (path: string) =>
     Effect.tryPromise({
-      try: async () => {
-        const canonical = await realpath(path);
-        if (!(await stat(canonical)).isDirectory()) {
-          throw Object.assign(new Error(`${canonical} is not a directory`), { code: "ENOTDIR" });
-        }
-        await access(canonical, constants.R_OK | constants.X_OK);
-        return canonical;
-      },
-      catch: (cause) => {
-        const code = codeOf(cause);
-        if (code === "ENOENT")
-          return new ProjectsError({ message: `“${path}” does not exist.`, status: 400 });
-        if (code === "ENOTDIR")
-          return new ProjectsError({ message: `“${path}” is not a folder.`, status: 400 });
-        if (code === "EACCES" || code === "EPERM")
-          return new ProjectsError({ message: `Eitri may not open “${path}”.`, status: 400 });
-        return new ProjectsError({
-          message: `Could not open “${path}”. ${reason(cause)}`,
-          status: 400,
-        });
-      },
+      try: () => readableFolder(path),
+      catch: (cause) =>
+        new ProjectsError({ message: folderProblem(path, cause, "open"), status: 400 }),
     });
 
   const ready = use(() => undefined);
@@ -245,33 +223,6 @@ export const makeProjectStore = (dataDir: string): ProjectStore => {
       return list(database);
     });
 
-  const updatePath = (id: string, path: string) =>
-    Effect.flatMap(canonicalize(path), (canonical) =>
-      use((database) => {
-        const mutate = database.transaction(() => {
-          const existing = database.query("SELECT id FROM projects WHERE id = $id").get({ id });
-          if (!existing) {
-            throw new ProjectsError({ message: "That project is not in the list.", status: 404 });
-          }
-          const conflict = database
-            .query("SELECT id FROM projects WHERE path = $path AND id != $id")
-            .get({ path: canonical, id });
-          if (conflict) {
-            throw new ProjectsError({
-              message: `“${canonical}” already belongs to another project.`,
-              status: 409,
-            });
-          }
-          database.query("UPDATE projects SET path = $path WHERE id = $id").run({
-            path: canonical,
-            id,
-          });
-        });
-        mutate.immediate();
-        return list(database);
-      }),
-    );
-
   const close = Semaphore.withPermit(turns)(
     Effect.try({
       try: () => {
@@ -283,5 +234,5 @@ export const makeProjectStore = (dataDir: string): ProjectStore => {
     }),
   );
 
-  return { ready, snapshot, open, forget, rename, updatePath, close };
+  return { ready, snapshot, open, forget, rename, close };
 };

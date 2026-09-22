@@ -6,7 +6,8 @@ export const FOLDERS_ENDPOINT = "/api/folders";
 export const FOLDER_PATH_MESSAGE =
   "Enter an absolute folder path, or use ~ for the server home folder.";
 
-const ABSOLUTE_PATH = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/;
+/** An absolute POSIX, Windows drive, or UNC path. Projects are opened by one, too. */
+export const ABSOLUTE_PATH = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/;
 const HOME_PATH = /^~(?:[\\/]|$)/;
 
 const FolderPathSchema = Schema.String.check(

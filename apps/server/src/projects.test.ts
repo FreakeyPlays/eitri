@@ -94,22 +94,6 @@ describe("project store", () => {
     expect((await run(store.snapshot)).projects).toHaveLength(paths.length);
   });
 
-  it("updates a path without changing identity and rejects path conflicts", async () => {
-    const first = await project("first");
-    const second = await project("second");
-    const moved = await project("moved");
-    const store = makeStore();
-    const firstId = (await run(store.open(first))).openedProjectId;
-    const secondId = (await run(store.open(second))).openedProjectId;
-
-    const updated = await run(store.updatePath(firstId, moved));
-    expect(updated.projects.find(({ id }) => id === firstId)?.path).toBe(moved);
-    expect(await failure(store.updatePath(firstId, second))).toMatchObject({ status: 409 });
-    expect((await run(store.snapshot)).projects.find(({ id }) => id === secondId)?.path).toBe(
-      second,
-    );
-  });
-
   it("names a project without touching its folder, and survives reopening", async () => {
     const path = await project("work");
     const store = makeStore();

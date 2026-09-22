@@ -292,27 +292,12 @@ describe("HTTP routes", () => {
       }
     });
 
-    it("relocates and forgets a project by ID", async () => {
+    it("forgets a project by ID", async () => {
       const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-known-")));
-      const moved = await realpath(await mkdtemp(join(tmpdir(), "eitri-moved-")));
       try {
         const opened = (await (await openProject(JSON.stringify({ path: directory }))).json()) as {
           openedProjectId: string;
         };
-        const relocated = await mutateProject(
-          "PATCH",
-          JSON.stringify({ id: opened.openedProjectId, path: moved }),
-        );
-        expect(relocated.status).toBe(200);
-        expect(await relocated.json()).toMatchObject({
-          projects: expect.arrayContaining([
-            expect.objectContaining({
-              id: opened.openedProjectId,
-              path: moved,
-              name: basename(moved),
-            }),
-          ]),
-        });
 
         const forgotten = await mutateProject(
           "DELETE",
@@ -325,7 +310,6 @@ describe("HTTP routes", () => {
         expect(remaining.map((project) => project.id)).not.toContain(opened.openedProjectId);
       } finally {
         await rm(directory, { recursive: true, force: true });
-        await rm(moved, { recursive: true, force: true });
       }
     });
 
