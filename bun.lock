@@ -79,6 +79,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@effect/platform-bun": "catalog:",
+        "@effect/sql-sqlite-bun": "catalog:",
         "@eitri/contracts": "workspace:*",
         "effect": "catalog:",
       },
@@ -126,6 +127,7 @@
   },
   "catalog": {
     "@effect/platform-bun": "4.0.0-rc.115",
+    "@effect/sql-sqlite-bun": "4.0.0-rc.115",
     "@types/bun": "^1.4.2",
     "@vitest/browser-playwright": "4.1.11",
     "@vitest/coverage-v8": "4.1.11",
@@ -438,6 +440,8 @@
     "@effect/platform-bun": ["@effect/platform-bun@4.0.0-rc.115", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-rc.115" }, "peerDependencies": { "effect": "^4.0.0-rc.115" } }, "sha512-ilTFcs66ghInP8WHCJYa4bx/yzohYM9dRR//qjmVBBpSKu1hrCTiRWpEcc1N6zrnOEPk2kyVaKg5ykSMgiBMqQ=="],
 
     "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.0-rc.115", "", { "dependencies": { "@types/ws": "^8.18.1", "ws": "^8.21.3" }, "peerDependencies": { "effect": "^4.0.0-rc.115" } }, "sha512-rcBwhDIfb82akJoTv7Vwh8K5x9vC/XfuePS7JjOr+z+dORXzsmKqI1BUQF27ARCN9fTAbDh7I6YvBlWhLjnqNg=="],
+
+    "@effect/sql-sqlite-bun": ["@effect/sql-sqlite-bun@4.0.0-rc.115", "", { "peerDependencies": { "effect": "^4.0.0-rc.115" } }, "sha512-CypwmCPAUSOOhopcnSI9ocgpKHfpgOdERpei3GuXZm5cCGP31pk2NUETqNaYhonhr2bWd+6Rc8atctnEbIYKYQ=="],
 
     "@eitri/client": ["@eitri/client@workspace:apps/client"],
 

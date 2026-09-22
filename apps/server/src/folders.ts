@@ -1,16 +1,11 @@
 import { access, constants, readdir, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import type { FolderEntry, FolderListing } from "@eitri/contracts/folder";
-import { Data, Effect } from "effect";
+import { join, resolve } from "node:path";
+import { type FolderEntry, type FolderListing, FoldersError } from "@eitri/contracts/folder";
+import { Effect } from "effect";
 
 const MAX_FOLDER_ENTRIES = 500;
 const MAX_FOLDER_READS = 32;
-
-export class FoldersError extends Data.TaggedError("FoldersError")<{
-  readonly message: string;
-  readonly status: number;
-}> {}
 
 const reason = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
@@ -89,11 +84,9 @@ export const listFolders = (
         .filter((entry): entry is FolderEntry => entry !== null)
         .sort((left, right) => (left.name === right.name ? 0 : left.name < right.name ? -1 : 1));
       const limit = Math.max(0, options.limit ?? MAX_FOLDER_ENTRIES);
-      const parent = dirname(path);
 
       return {
         path,
-        parentPath: parent === path ? null : parent,
         directories: directories.slice(0, limit),
         truncated: directories.length > limit,
       };
@@ -101,6 +94,5 @@ export const listFolders = (
     catch: (cause) =>
       new FoldersError({
         message: folderProblem(requestedPath ?? options.home ?? homedir(), cause, "browse"),
-        status: 400,
       }),
   });

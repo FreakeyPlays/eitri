@@ -1,43 +1,45 @@
 # Architecture
 
-Eitri has an Angular frontend and a TypeScript HTTP backend running on Bun.
+Eitri has an Angular frontend and a TypeScript backend running on Bun.
 The standalone server uses shared Effect contracts and is bundled with `vp pack`.
 Bun compiles the bundle into a standalone executable. Tauri ships that executable,
-and starts one server per desktop process. The frontend connects directly over HTTP.
+and starts one server per desktop process. The frontend talks to it over one
+WebSocket, using Effect RPC.
 
-## Server direction
+## Transport
 
-Use Bun with Effect HTTP and Effect RPC for the server's transport layer. This keeps
-routing, typed calls, and streams in the same Effect stack. Today the server exposes
-JSON endpoints for agent requests, projects and server folder navigation over HTTP.
-The RPC and WebSocket parts remain a separate planned step.
+Every call a client makes is an Effect RPC defined once in `EitriRpcs`
+(`@eitri/contracts/rpc`): its payload, answer and expected error as Effect Schemas.
+The server implements the group in `apps/server/src/rpc.ts`; the client derives its
+typed calls from the same group in `ServerService`. Payloads are decoded on the
+server before a handler runs, and answers are decoded on the client, so neither
+side trusts the wire. Expected failures are tagged errors (`ProjectsError`,
+`FoldersError`, `AgentError`) carrying one sentence for the user.
 
-- Use `BunHttpServer` and `HttpRouter` for HTTP, and Effect RPC over WebSockets
-  for agent calls and event streams.
-- Define payloads, results, expected errors, stream events, and RPC groups in
-  `packages/contracts` using Effect Schema. Server handlers and the client
-  derive their interface from these shared definitions.
-- Keep agent execution and resource cleanup in server services. Encapsulate
-  the Effect client in the client adapter so UI components stay focused on
-  presentation.
+Calls travel over a single WebSocket at `RPC_PATH` (`/api/rpc`), served by
+`BunHttpServer` and `HttpRouter`. The socket stays open, so later event streams —
+agent output, another client renaming a project — arrive on the same connection
+without polling. A WebSocket ignores the same-origin policy, so the server refuses
+an upgrade from any origin other than the Tauri shell, the dev server or itself.
+Plain HTTP is left for `/health`. This is how T3 Code talks to its server, too.
 
 ## Current structure
 
 - **Frontend** (`apps/client`): Angular UI shared by the web
   and desktop clients. Folder ownership, pages, commands and panels are described
   in [Client UI](client-ui.md).
-  The agent service handles HTTP requests; client adapters resolve the server
+  `ServerService` holds the RPC connection; client adapters resolve the server
   address and isolate native capabilities. The Tauri shell in `apps/client/src-tauri`
   owns the packaged server's lifecycle.
 - **Server** (`apps/server`): validates requests, selects the installed Agent CLI,
   passes the prompt through stdin, and returns its completed output. Owns process
   execution, timeouts, and cleanup. Each request starts a fresh conversation.
   It also owns the user's data directory: projects have stable IDs and live in
-  `state.sqlite` there, so clients share the remembered collection. Each client
-  persists its own selected project locally.
+  `state.sqlite` there, so clients share the remembered collection. Which project
+  a window shows stays in that window.
   See [User data](user-data.md).
-- **Contracts** (`packages/contracts`): shared schemas, derived types, and endpoint
-  constants defining what crosses the client/server boundary. Keep execution and
+- **Contracts** (`packages/contracts`): shared schemas, derived types, and the RPC
+  group defining what crosses the client/server boundary. Keep execution and
   application state in the applications.
 - **Shared** (`packages/shared`): portable runtime helpers derived from the
   contracts, currently request validation and response decoding. Keep these
@@ -51,9 +53,7 @@ The RPC and WebSocket parts remain a separate planned step.
 
 ```mermaid
 flowchart TB
-    UI[Angular frontend] -->|POST /api/agent| H[Bun HTTP server]
-    UI -->|Project collection and mutations /api/projects| H
-    UI -->|GET /api/folders| H
+    UI[Angular frontend] -->|Effect RPC over WebSocket /api/rpc| H[Bun server]
     H --> S[TypeScript agent adapter]
     H --> P[Project list in the data directory]
     S --> C[Installed Agent CLI]
@@ -62,7 +62,7 @@ flowchart TB
     UI -->|Available client features| N[Native adapters]
 ```
 
-The Angular dev proxy forwards `/api/**` to `127.0.0.1:4318`. Run `vp run dev:server`
+The Angular dev proxy forwards `/api/**`, WebSockets included, to `127.0.0.1:4318`. Run `vp run dev:server`
 alongside `vp run dev:web`, or `vp run dev:desktop`, which starts both beside the shell.
 In development the shell starts no sidecar; the frontend reaches the watched server
 through the proxy.

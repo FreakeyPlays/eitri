@@ -1,4 +1,11 @@
-<brn-popover #menu="brnPopover" align="start" [sideOffset]="6" [role]="null">
+<brn-popover
+  #menu="brnPopover"
+  align="start"
+  [sideOffset]="6"
+  [role]="null"
+  [state]="layout.projectMenu()"
+  (stateChanged)="layout.projectMenu.set($event)"
+>
   <button
     brnPopoverTrigger
     hlmBtn

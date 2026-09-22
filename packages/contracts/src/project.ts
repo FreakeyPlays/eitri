@@ -1,9 +1,6 @@
 import * as Schema from "effect/Schema";
 import { ABSOLUTE_PATH } from "@eitri/contracts/folder";
 
-/** Route served by `@eitri/server` and proxied by the Angular dev server. */
-export const PROJECTS_ENDPOINT = "/api/projects";
-
 export const PROJECT_PATH_MESSAGE = "Enter the absolute path of a folder on this computer.";
 
 export const PROJECT_NAME_MESSAGE =
@@ -75,5 +72,7 @@ export const OpenedProjectSchema = Schema.Struct({
 });
 export type OpenedProject = typeof OpenedProjectSchema.Type;
 
-/** A rejected request or unreadable storage answers with a message in this shape. */
-export const ProjectsFailureSchema = Schema.String;
+/** A refused request or unreadable storage, as one sentence the project menu can show. */
+export class ProjectsError extends Schema.TaggedError<ProjectsError>()("ProjectsError", {
+  message: Schema.String,
+}) {}

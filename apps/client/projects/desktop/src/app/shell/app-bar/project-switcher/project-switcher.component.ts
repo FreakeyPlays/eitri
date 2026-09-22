@@ -4,12 +4,12 @@ import { HlmButton } from "@ui/button";
 import { ChevronsUpDownIcon } from "ng-animated-icons";
 import { ProjectService } from "@core/projects/project.service";
 import { AnimateIconDirective } from "@shell/animate-icon.directive";
+import { LayoutService } from "@shell/layout/layout.service";
 import { ProjectMenuComponent } from "./project-menu.component";
 
 /**
  * Names what the user works in, and drops the project menu open beneath that
- * name. The only way into the menu, so there is one place to switch and
- * nothing to duplicate elsewhere.
+ * name. The palette's "Projects" command opens the same menu through `LayoutService`.
  */
 @Component({
   selector: "app-project-switcher",
@@ -26,6 +26,7 @@ import { ProjectMenuComponent } from "./project-menu.component";
 })
 export class ProjectSwitcherComponent {
   protected readonly projects = inject(ProjectService);
+  protected readonly layout = inject(LayoutService);
 
   protected readonly name = computed(() => {
     const active = this.projects.active();

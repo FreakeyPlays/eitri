@@ -23,7 +23,6 @@ const other = {
 describe("ProjectMenuComponent", () => {
   const projects = signal<Project[]>([]);
   const active = signal<Project | null>(null);
-  const notice = signal<string | null>(null);
   const error = signal<string | null>(null);
   const busy = signal(false);
   const open = vi.fn<(path: string) => Promise<boolean>>();
@@ -39,7 +38,6 @@ describe("ProjectMenuComponent", () => {
   beforeEach(() => {
     projects.set([]);
     active.set(null);
-    notice.set(null);
     error.set(null);
     busy.set(false);
     loaded.set(true);
@@ -52,7 +50,6 @@ describe("ProjectMenuComponent", () => {
     openDialog.mockReset();
     listFolders.mockReset().mockResolvedValue({
       path: "/srv/work",
-      parentPath: "/srv",
       directories: [],
       truncated: false,
     });
@@ -68,7 +65,6 @@ describe("ProjectMenuComponent", () => {
             projects,
             active,
             allSelected: computed(() => active() === null),
-            notice,
             error,
             busy,
             loaded,
@@ -238,13 +234,6 @@ describe("ProjectMenuComponent", () => {
 
     expect(element.textContent).toContain("No projects yet");
     expect(element.querySelector("input[data-slot=command-input]")).toBeNull();
-  });
-
-  it("passes on why the last project did not open", async () => {
-    notice.set("“eitri” is no longer at /git/eitri.");
-    const { element } = await render();
-
-    expect(element.querySelector('[role="status"]')?.textContent).toContain("no longer");
   });
 
   it("opens the folder the desktop picker returned", async () => {

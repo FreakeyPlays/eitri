@@ -54,3 +54,14 @@ stored no projects), so both historical formats only existed on this branch and
 the importer protected data no user has. The database now starts empty and keeps
 every other rule: versioned schema, immediate transactions, and refusal to touch
 unknown or newer storage.
+
+## Revision — 2026-09-23
+
+Storage moved to Effect SQL (`@effect/sql-sqlite-bun`) and its `Migrator`, modeled
+on T3 Code: one migration file each in `apps/server/src/migrations/`, statically
+listed in `database.ts`, recorded in `effect_sql_migrations`. The hand-written
+`user_version` check, strict column validation and refusal of unversioned tables
+are gone; they turned every schema edit during development into a startup error,
+which `dev:desktop` papered over by deleting the dev data on every start. That
+reset is gone. Databases carrying an unknown, newer
+migration are still refused without being written.

@@ -6,7 +6,6 @@ import { FolderBrowserComponent } from "./folder-browser.component";
 
 const listing = (path = "/srv/work"): FolderListing => ({
   path,
-  parentPath: "/srv",
   directories: [
     { name: "eitri", path: `${path}/eitri` },
     { name: "git", path: `${path}/git` },
@@ -164,7 +163,6 @@ describe("FolderBrowserComponent", () => {
   it("explains empty folders, no matches and truncated listings", async () => {
     listFolders.mockResolvedValueOnce({
       path: "/empty",
-      parentPath: "/",
       directories: [],
       truncated: true,
     });
@@ -176,7 +174,7 @@ describe("FolderBrowserComponent", () => {
     type("/srv/work/nothing");
     await vi.waitFor(() => {
       fixture.detectChanges();
-      expect(element.textContent).toContain("No folder here matches");
+      expect(element.textContent).toContain("No matching folder found.");
     });
   });
 

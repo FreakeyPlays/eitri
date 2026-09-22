@@ -1,9 +1,9 @@
-import { PROMPT_MAX_BYTES } from "@eitri/contracts/agent";
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer";
-import { Console, Effect, Latch, Layer, Stdio, Stream } from "effect";
+import { Console, Effect, Layer, Stdio, Stream } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
+import { Database } from "./database.ts";
 import { HttpRoutes } from "./http.ts";
-import { makeProjectStore } from "./projects.ts";
+import { ProjectStore } from "./projects.ts";
 
 /** `dataDir` has no default here; only `bin.ts` decides which data a run may touch. */
 export const runServer = (options: {
@@ -12,18 +12,18 @@ export const runServer = (options: {
   readonly dataDir: string;
 }) =>
   Effect.gen(function* () {
-    const shutdown = yield* Latch.make();
-    const projects = makeProjectStore(options.dataDir);
-    const Server = HttpRouter.serve(HttpRoutes({ shutdown, projects }), {
+    const Server = HttpRouter.serve(HttpRoutes, {
       disableLogger: false,
       disableListenLog: true,
     }).pipe(
+      Layer.provide(ProjectStore.layer),
+      Layer.provide(Database(options.dataDir)),
       Layer.provideMerge(
         BunHttpServer.layer({
           hostname: "127.0.0.1",
           port: options.port,
-          idleTimeout: 130,
-          maxRequestBodySize: PROMPT_MAX_BYTES * 6 + 1024,
+          // Close open WebSockets right away: waiting for clients to leave would hold shutdown open.
+          disablePreemptiveShutdown: true,
         }),
       ),
     );
@@ -38,12 +38,6 @@ export const runServer = (options: {
         })
       : Effect.never;
 
-    yield* Effect.gen(function* () {
-      yield* projects.ready;
-      yield* announce.pipe(
-        Effect.andThen(awaitShutdown),
-        Effect.ensuring(shutdown.open),
-        Effect.provide(Server),
-      );
-    }).pipe(Effect.ensuring(Effect.orDie(projects.close)));
+    // The database is migrated while the layer builds, so a broken one fails before the announcement.
+    yield* announce.pipe(Effect.andThen(awaitShutdown), Effect.provide(Server));
   });

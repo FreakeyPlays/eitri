@@ -5,7 +5,7 @@ import * as BunServices from "@effect/platform-bun/BunServices";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { Effect, Fiber } from "effect";
 import type { ChildProcessSpawner } from "effect/unstable/process";
-import { askAgent, runAgent } from "./agent.ts";
+import { runAgent } from "./agent.ts";
 
 type Run<A, E> = Effect.Effect<A, E, ChildProcessSpawner.ChildProcessSpawner>;
 
@@ -102,12 +102,4 @@ describe("agent process", () => {
     expect(pid).toBeGreaterThan(0);
     expect(() => process.kill(pid, 0)).toThrow();
   });
-
-  it.each(["", " ", "ä".repeat(8001)])(
-    "rejects invalid prompts before spawning",
-    async (prompt) => {
-      const error = await failure(askAgent({ agent: "codex", prompt }));
-      expect(error.message).toContain("Enter a prompt");
-    },
-  );
 });

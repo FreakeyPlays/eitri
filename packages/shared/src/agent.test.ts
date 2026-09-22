@@ -1,6 +1,6 @@
 import { PROMPT_MAX_BYTES, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
 import { describe, expect, it } from "vite-plus/test";
-import { readAgentAnswer, toAgentRequest } from "./agent.ts";
+import { toAgentRequest } from "./agent.ts";
 
 describe("toAgentRequest", () => {
   it("passes valid input through as the request the adapters send", () => {
@@ -16,15 +16,5 @@ describe("toAgentRequest", () => {
 
   it("rejects an agent the backend cannot run", () => {
     expect(() => toAgentRequest("gemini", "Hello")).toThrow(/codex/);
-  });
-});
-
-describe("readAgentAnswer", () => {
-  it("returns the answer of a well-behaved backend", () => {
-    expect(readAgentAnswer("Hello from the agent")).toBe("Hello from the agent");
-  });
-
-  it.each([{ unexpected: true }, undefined, 1])("rejects the payload %j", (reply) => {
-    expect(() => readAgentAnswer(reply)).toThrow("Unexpected response");
   });
 });

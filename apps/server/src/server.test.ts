@@ -1,50 +1,14 @@
-import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, delimiter, join } from "node:path";
-import * as BunServices from "@effect/platform-bun/BunServices";
-import { AGENT_ENDPOINT, PROMPT_MAX_BYTES, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
-import {
-  PROJECT_NAME_MESSAGE,
-  PROJECT_PATH_MESSAGE,
-  PROJECTS_ENDPOINT,
-} from "@eitri/contracts/project";
-import { Console, Effect, Fiber } from "effect";
+import { AgentError, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
+import { FOLDER_PATH_MESSAGE, FoldersError } from "@eitri/contracts/folder";
+import { ProjectsError } from "@eitri/contracts/project";
+import { EitriRpcs } from "@eitri/contracts/rpc";
+import { Cause, Effect, Schema } from "effect";
+import { Rpc, RpcGroup } from "effect/unstable/rpc";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
-import { runServer } from "./server.ts";
-
-/**
- * Boots the real server on an ephemeral port; bin.test.ts covers executable lifecycle behavior.
- */
-const start = (dataDir: string) => {
-  const announced: string[] = [];
-  const recorder: Console.Console = Object.assign(Object.create(console), {
-    log: (...args: ReadonlyArray<unknown>) => announced.push(args.join(" ")),
-  });
-  const fiber = Effect.runFork(
-    runServer({ port: 0, sidecar: false, dataDir }).pipe(
-      Effect.provideService(Console.Console, recorder),
-      Effect.provide(BunServices.layer),
-    ),
-  );
-
-  const url = (async () => {
-    const deadline = Date.now() + 5000;
-    while (announced.length === 0) {
-      if (Date.now() > deadline) throw new Error("Server never announced its address.");
-      await Bun.sleep(5);
-    }
-    const line = announced[0];
-    const match = /listening on (http:\/\/[^\s]+)/.exec(line);
-    if (!match) throw new Error(`Unexpected announcement: ${line}`);
-    return match[1];
-  })();
-
-  return {
-    url,
-    announced,
-    stop: () => Effect.runPromise(Fiber.interrupt(fiber)),
-  };
-};
+import { type Connection, connect, failure, run, socketUrl, start } from "./testing.ts";
 
 /** Installs deterministic stand-ins for the agent CLIs; tests never invoke a real agent. */
 const installAgents = async () => {
@@ -70,11 +34,47 @@ console.log(prompt);
   };
 };
 
-describe("HTTP routes", () => {
+/** The same calls without payload schemas, to send what the real client would refuse. */
+const Unchecked = RpcGroup.make(
+  Rpc.make("agent.ask", { payload: Schema.Unknown, success: Schema.String, error: AgentError }),
+  Rpc.make("projects.rename", {
+    payload: Schema.Unknown,
+    success: Schema.Unknown,
+    error: ProjectsError,
+  }),
+  Rpc.make("folders.browse", {
+    payload: Schema.Unknown,
+    success: Schema.Unknown,
+    error: FoldersError,
+  }),
+);
+
+const folder = async (prefix: string) => realpath(await mkdtemp(join(tmpdir(), prefix)));
+
+// Bun lets a client choose its Origin header, which a browser never would.
+const BunWebSocket = WebSocket as unknown as new (
+  url: string,
+  options: { headers: Record<string, string> },
+) => WebSocket;
+
+/** Resolves once the socket opens, or once the server refused it. */
+const handshake = (url: string, origin: string) =>
+  new Promise<"open" | "refused">((resolve) => {
+    const socket = new BunWebSocket(socketUrl(url), { headers: { Origin: origin } });
+    socket.addEventListener("open", () => {
+      socket.close();
+      resolve("open");
+    });
+    socket.addEventListener("error", () => resolve("refused"));
+  });
+
+describe("RPC server", () => {
   let agents: Awaited<ReturnType<typeof installAgents>>;
   let server: ReturnType<typeof start>;
   let dataDir: string;
   let url: string;
+  let connection: Connection<RpcGroup.Rpcs<typeof EitriRpcs>>;
+  let unchecked: Connection<RpcGroup.Rpcs<typeof Unchecked>>;
 
   beforeAll(async () => {
     agents = await installAgents();
@@ -82,10 +82,14 @@ describe("HTTP routes", () => {
     dataDir = await mkdtemp(join(tmpdir(), "eitri-data-"));
     server = start(dataDir);
     url = await server.url;
+    connection = await connect(url, EitriRpcs);
+    unchecked = await connect(url, Unchecked);
   });
 
   afterAll(async () => {
     try {
+      await connection?.close();
+      await unchecked?.close();
       await server?.stop();
     } finally {
       await agents?.uninstall();
@@ -93,23 +97,16 @@ describe("HTTP routes", () => {
     }
   });
 
-  const post = (body: string, headers: Record<string, string> = {}) =>
-    fetch(new URL(AGENT_ENDPOINT, url), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
-      body,
-    });
+  /** A payload the RPC server refused before any handler ran, as its readable defect. */
+  const refusal = async (effect: Effect.Effect<unknown, unknown>) => {
+    const exit = await Effect.runPromiseExit(effect);
+    expect(exit._tag).toBe("Failure");
+    return exit._tag === "Failure" ? Cause.pretty(exit.cause) : "";
+  };
 
   it("announces the address it listens on", () => {
     expect(server.announced[0]).toMatch(/^Server listening on http:\/\/127\.0\.0\.1:\d+\/?$/);
     expect(new URL(url).hostname).toBe("127.0.0.1");
-  });
-
-  it("serves the shared request and answer contract", async () => {
-    const prompt = "--help\n$(literal) ä";
-    const response = await post(JSON.stringify({ agent: "codex", prompt }));
-    expect(response.status).toBe(200);
-    expect(await response.json()).toBe(prompt);
   });
 
   it("answers health checks", async () => {
@@ -118,78 +115,50 @@ describe("HTTP routes", () => {
     expect(await response.json()).toEqual({ status: "ok" });
   });
 
-  it.each([" ", "ä".repeat(8001)])(
-    "rejects invalid input through the shared schema",
-    async (prompt) => {
-      const response = await post(JSON.stringify({ agent: "codex", prompt }));
-      expect(response.status).toBe(400);
-      expect(await response.json()).toBe(PROMPT_RANGE_MESSAGE);
-    },
-  );
+  describe("agent.ask", () => {
+    it("passes the prompt to the CLI and answers with its output", async () => {
+      const prompt = "--help\n$(literal) ä";
+      expect(await run(connection.client["agent.ask"]({ agent: "codex", prompt }))).toBe(prompt);
+    });
 
-  it("reports a failing CLI as a single-line answer", async () => {
-    const response = await post(JSON.stringify({ agent: "claude", prompt: "Hello" }));
-    expect(response.status).toBe(400);
-    expect(await response.json()).toBe("Agent exited with 7: login required");
-  });
+    it.each([" ", "ä".repeat(8001)])("refuses the invalid prompt %j by schema", async (prompt) => {
+      const refused = await refusal(unchecked.client["agent.ask"]({ agent: "codex", prompt }));
+      expect(refused).toContain(PROMPT_RANGE_MESSAGE);
+    });
 
-  it("survives a CLI exiting before reading a large prompt", async () => {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const response = await post(JSON.stringify({ agent: "claude", prompt: "x".repeat(12_000) }));
-      expect(await response.json()).toContain("Agent exited with 7: login required");
-      expect((await fetch(new URL("/health", url))).status).toBe(200);
-    }
-    expect(
-      await (await post(JSON.stringify({ agent: "codex", prompt: "still running" }))).json(),
-    ).toBe("still running");
-  });
+    it("refuses an unknown agent by schema", async () => {
+      const refused = await refusal(
+        unchecked.client["agent.ask"]({ agent: "unknown", prompt: "Hello" }),
+      );
+      expect(refused).toContain("agent");
+    });
 
-  it("rejects oversized request bodies", async () => {
-    const response = await post(" ".repeat(PROMPT_MAX_BYTES * 6 + 1025));
-    expect(response.status).toBe(413);
-  });
+    it("reports a failing CLI as a single-line error", async () => {
+      expect(
+        await failure(connection.client["agent.ask"]({ agent: "claude", prompt: "Hello" })),
+      ).toMatchObject({ _tag: "AgentError", message: "Agent exited with 7: login required" });
+    });
 
-  it("rejects malformed JSON and unknown agents", async () => {
-    for (const body of ["{", JSON.stringify({ agent: "unknown", prompt: "Hello" })]) {
-      const response = await post(body);
-      expect(response.status).toBe(400);
-      expect(typeof (await response.json())).toBe("string");
-    }
-  });
-
-  it("distinguishes unknown routes and unsupported methods", async () => {
-    expect((await fetch(new URL("/missing", url))).status).toBe(404);
-    for (const method of ["GET", "HEAD", "PUT", "PATCH", "DELETE"]) {
-      const response = await fetch(new URL(`${AGENT_ENDPOINT}?source=test`, url), { method });
-      expect(response.status).toBe(405);
-      expect(response.headers.get("Allow")).toBe("POST");
-    }
+    it("survives a CLI exiting before reading a large prompt", async () => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const error = await failure(
+          connection.client["agent.ask"]({ agent: "claude", prompt: "x".repeat(12_000) }),
+        );
+        expect(error.message).toContain("Agent exited with 7: login required");
+      }
+      expect(
+        await run(connection.client["agent.ask"]({ agent: "codex", prompt: "still running" })),
+      ).toBe("still running");
+    });
   });
 
   describe("projects", () => {
-    const projects = () => new URL(PROJECTS_ENDPOINT, url);
-    const mutateProject = (
-      method: "POST" | "PATCH" | "DELETE",
-      body: string,
-      headers: Record<string, string> = {},
-    ) =>
-      fetch(new URL(PROJECTS_ENDPOINT, url), {
-        method,
-        headers: { "Content-Type": "application/json", ...headers },
-        body,
-      });
-    const openProject = (body: string, headers: Record<string, string> = {}) =>
-      mutateProject("POST", body, headers);
-    const snapshot = () => fetch(new URL(PROJECTS_ENDPOINT, url)).then((res) => res.json());
-
     it("starts empty, then remembers what the user opened", async () => {
-      expect(await snapshot()).toEqual({ projects: [] });
+      expect(await run(connection.client["projects.list"]())).toEqual({ projects: [] });
 
-      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-project-")));
+      const directory = await folder("eitri-project-");
       try {
-        const response = await openProject(JSON.stringify({ path: directory }));
-        expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({
+        expect(await run(connection.client["projects.open"]({ path: directory }))).toEqual({
           projects: [
             {
               id: expect.any(String),
@@ -200,201 +169,136 @@ describe("HTTP routes", () => {
           ],
           openedProjectId: expect.any(String),
         });
-        expect(await snapshot()).toMatchObject({ projects: [{ path: directory }] });
+        expect(await run(connection.client["projects.list"]())).toMatchObject({
+          projects: [{ path: directory }],
+        });
       } finally {
         await rm(directory, { recursive: true, force: true });
       }
     });
 
     it.each([
-      { body: JSON.stringify({ path: "relative/path" }), expected: PROJECT_PATH_MESSAGE },
-      { body: JSON.stringify({ path: "/nope/missing" }), expected: "does not exist" },
-      { body: "{", expected: "JSON" },
-    ])("refuses $body with a message the picker can show", async ({ body, expected }) => {
-      const response = await openProject(body);
-      expect(response.status).toBe(400);
-      expect(await response.json()).toContain(expected);
-    });
-
-    it("refuses a file that is not a folder", async () => {
-      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-file-")));
-      const file = join(directory, "README.md");
-      await Bun.write(file, "not a project");
+      { path: "/nope/missing", expected: "does not exist" },
+      { path: "README.md", expected: "is not a folder" },
+    ])("refuses $path with a message the menu can show", async ({ path, expected }) => {
+      const directory = await folder("eitri-file-");
+      await Bun.write(join(directory, "README.md"), "not a project");
       try {
-        const response = await openProject(JSON.stringify({ path: file }));
-        expect(response.status).toBe(400);
-        expect(await response.json()).toContain("is not a folder");
+        const target = path.startsWith("/") ? path : join(directory, path);
+        const error = await failure(connection.client["projects.open"]({ path: target }));
+        expect(error).toMatchObject({ _tag: "ProjectsError" });
+        expect(error.message).toContain(expected);
       } finally {
         await rm(directory, { recursive: true, force: true });
-      }
-    });
-
-    it("reads and writes, and refuses everything else", async () => {
-      const preflight = await fetch(projects(), {
-        method: "OPTIONS",
-        headers: { Origin: "http://localhost:1420" },
-      });
-      expect(preflight.status).toBe(204);
-      expect(preflight.headers.get("Access-Control-Allow-Methods")).toBe(
-        "GET, POST, PATCH, DELETE",
-      );
-
-      for (const method of ["PUT", "HEAD"]) {
-        const response = await fetch(projects(), { method });
-        expect(response.status).toBe(405);
-        expect(response.headers.get("Allow")).toBe("GET, POST, PATCH, DELETE");
       }
     });
 
     it("renames a project by ID, clears it, and refuses an unusable name", async () => {
-      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-named-")));
+      const directory = await folder("eitri-named-");
       try {
-        const opened = (await (await openProject(JSON.stringify({ path: directory }))).json()) as {
-          openedProjectId: string;
-        };
-        const renamed = await mutateProject(
-          "PATCH",
-          JSON.stringify({ id: opened.openedProjectId, name: "Client portal" }),
+        const { openedProjectId: id } = await run(
+          connection.client["projects.open"]({ path: directory }),
         );
-        expect(renamed.status).toBe(200);
-        expect(await renamed.json()).toMatchObject({
+        expect(
+          await run(connection.client["projects.rename"]({ id, name: "Client portal" })),
+        ).toMatchObject({
           projects: expect.arrayContaining([
-            expect.objectContaining({
-              id: opened.openedProjectId,
-              path: directory,
-              name: "Client portal",
-            }),
+            expect.objectContaining({ id, path: directory, name: "Client portal" }),
           ]),
         });
-
-        const cleared = await mutateProject(
-          "PATCH",
-          JSON.stringify({ id: opened.openedProjectId, name: "" }),
-        );
-        expect(cleared.status).toBe(200);
-        expect(await cleared.json()).toMatchObject({
+        expect(await run(connection.client["projects.rename"]({ id, name: "" }))).toMatchObject({
           projects: expect.arrayContaining([
-            expect.objectContaining({
-              id: opened.openedProjectId,
-              name: basename(directory),
-            }),
+            expect.objectContaining({ id, name: basename(directory) }),
           ]),
         });
-
-        const refused = await mutateProject(
-          "PATCH",
-          JSON.stringify({ id: opened.openedProjectId, name: "  padded  " }),
-        );
-        expect(refused.status).toBe(400);
-        expect(await refused.json()).toContain(PROJECT_NAME_MESSAGE);
+        expect(
+          await refusal(unchecked.client["projects.rename"]({ id, name: "  padded  " })),
+        ).toContain("Enter a project name");
       } finally {
         await rm(directory, { recursive: true, force: true });
       }
     });
 
-    it("forgets a project by ID", async () => {
-      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-known-")));
+    it("forgets a project by ID, and refuses one it does not know", async () => {
+      const directory = await folder("eitri-known-");
       try {
-        const opened = (await (await openProject(JSON.stringify({ path: directory }))).json()) as {
-          openedProjectId: string;
-        };
-
-        const forgotten = await mutateProject(
-          "DELETE",
-          JSON.stringify({ id: opened.openedProjectId }),
+        const { openedProjectId: id } = await run(
+          connection.client["projects.open"]({ path: directory }),
         );
-        expect(forgotten.status).toBe(200);
-        const { projects: remaining } = (await forgotten.json()) as {
-          projects: { id: string }[];
-        };
-        expect(remaining.map((project) => project.id)).not.toContain(opened.openedProjectId);
+        const { projects } = await run(connection.client["projects.forget"]({ id }));
+        expect(projects.map((project) => project.id)).not.toContain(id);
+        expect(await failure(connection.client["projects.forget"]({ id }))).toMatchObject({
+          _tag: "ProjectsError",
+          message: "That project is not in the list.",
+        });
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe("folders.browse", () => {
+    it("lists an explicit path through the shared contract", async () => {
+      const directory = await folder("eitri-folders-");
+      await Promise.all([mkdir(join(directory, "zeta")), mkdir(join(directory, "space ü"))]);
+      try {
+        expect(await run(connection.client["folders.browse"]({ path: directory }))).toEqual({
+          path: directory,
+          directories: [
+            { name: "space ü", path: join(directory, "space ü") },
+            { name: "zeta", path: join(directory, "zeta") },
+          ],
+          truncated: false,
+        });
       } finally {
         await rm(directory, { recursive: true, force: true });
       }
     });
 
-    it("refuses a foreign origin before reading any data", async () => {
-      const response = await fetch(projects(), {
-        headers: { Origin: "https://untrusted.example" },
-      });
-      expect(response.status).toBe(403);
-      expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    it("answers a missing folder with a sentence", async () => {
+      expect(
+        await failure(connection.client["folders.browse"]({ path: "/nope/missing" })),
+      ).toMatchObject({ _tag: "FoldersError", message: "“/nope/missing” does not exist." });
+    });
+
+    it("refuses a relative path by schema, before touching the disk", async () => {
+      expect(
+        await refusal(unchecked.client["folders.browse"]({ path: "relative/path" })),
+      ).toContain(FOLDER_PATH_MESSAGE);
     });
   });
 
-  it.each([
-    "tauri://localhost",
-    "http://tauri.localhost",
-    "https://tauri.localhost",
-    "http://localhost:1420",
-    "http://127.0.0.1:1420",
-  ])("allows JSON requests from %s", async (origin) => {
-    const endpoint = new URL(AGENT_ENDPOINT, url);
-    const preflight = await fetch(endpoint, {
-      method: "OPTIONS",
-      headers: {
-        Origin: origin,
-        "Access-Control-Request-Method": "POST",
-        "Access-Control-Request-Headers": "content-type",
-      },
+  describe("origins", () => {
+    it.each([
+      "tauri://localhost",
+      "http://tauri.localhost",
+      "https://tauri.localhost",
+      "http://localhost:1420",
+      "http://127.0.0.1:1420",
+    ])("accepts a WebSocket from %s", async (origin) => {
+      expect(await handshake(url, origin)).toBe("open");
     });
-    expect(preflight.status).toBe(204);
-    expect(preflight.headers.get("Access-Control-Allow-Origin")).toBe(origin);
-    expect(preflight.headers.get("Access-Control-Allow-Methods")).toBe("POST");
-    expect(preflight.headers.get("Access-Control-Allow-Headers")).toBe("Content-Type");
-    for (const prompt of ["Hello", " "]) {
-      const response = await post(JSON.stringify({ agent: "codex", prompt }), { Origin: origin });
-      expect(response.status).toBe(prompt.trim() ? 200 : 400);
-      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
-      expect(response.headers.get("Vary")).toBe("Origin");
-    }
-  });
 
-  it("echoes no origin, but still varies, for requests without one", async () => {
-    const response = await post(JSON.stringify({ agent: "codex", prompt: "no origin" }));
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
-    expect(response.headers.get("Vary")).toBe("Origin");
-  });
-
-  it("allows the localhost server's own origin", async () => {
-    const response = await post(JSON.stringify({ agent: "codex", prompt: "same origin" }), {
-      Origin: url,
+    it("accepts the localhost server's own origin", async () => {
+      expect(await handshake(url, new URL(url).origin)).toBe("open");
     });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toBe("same origin");
-  });
 
-  it("rejects matching foreign Host and Origin headers", async () => {
-    for (const method of ["OPTIONS", "POST"]) {
-      const response = await fetch(new URL(AGENT_ENDPOINT, url), {
-        method,
-        headers: {
-          Host: "untrusted.example:4318",
-          Origin: "http://untrusted.example:4318",
-          "Content-Type": "application/json",
-        },
-        ...(method === "POST" ? { body: JSON.stringify({ agent: "codex", prompt: "Hello" }) } : {}),
-      });
-      expect(response.status).toBe(403);
-      expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
-    }
-  });
-
-  it.each(["https://untrusted.example", "not-a-url"])(
-    "rejects %s before executing agent requests",
-    async (origin) => {
-      for (const method of ["OPTIONS", "POST"]) {
-        const response = await fetch(new URL(AGENT_ENDPOINT, url), {
-          method,
-          headers: { Origin: origin, "Content-Type": "application/json" },
-          ...(method === "POST"
-            ? { body: JSON.stringify({ agent: "codex", prompt: "Hello" }) }
-            : {}),
+    it.each(["https://untrusted.example", "not-a-url"])(
+      "refuses %s before the upgrade",
+      async (origin) => {
+        expect(await handshake(url, origin)).toBe("refused");
+        const response = await fetch(socketUrl(url).replace(/^ws/, "http"), {
+          headers: { Origin: origin },
         });
         expect(response.status).toBe(403);
-        expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
-      }
-    },
-  );
+      },
+    );
+
+    it("refuses matching foreign Host and Origin headers", async () => {
+      const response = await fetch(socketUrl(url).replace(/^ws/, "http"), {
+        headers: { Host: "untrusted.example:4318", Origin: "http://untrusted.example:4318" },
+      });
+      expect(response.status).toBe(403);
+    });
+  });
 });

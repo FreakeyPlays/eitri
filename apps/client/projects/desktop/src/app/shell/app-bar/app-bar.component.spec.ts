@@ -24,6 +24,7 @@ describe("AppBarComponent", () => {
             has: (panel: Panel) => panel === "sidebar" || offered().includes(panel),
             isOpen: (panel: Panel) => open().includes(panel),
             toggle,
+            projectMenu: signal("closed"),
           },
         },
       ],

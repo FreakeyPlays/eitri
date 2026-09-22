@@ -1,9 +1,10 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, parse } from "node:path";
+import { join } from "node:path";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { listFolders, type FoldersError } from "./folders.ts";
+import type { FoldersError } from "@eitri/contracts/folder";
+import { listFolders } from "./folders.ts";
 
 describe("server folder browser", () => {
   let root: string;
@@ -21,10 +22,9 @@ describe("server folder browser", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("starts at the supplied server home and reports its parent", async () => {
+  it("starts at the supplied server home", async () => {
     expect(await run(undefined, { home: root })).toMatchObject({
       path: root,
-      parentPath: join(root, ".."),
       directories: [],
       truncated: false,
     });
@@ -65,15 +65,13 @@ describe("server folder browser", () => {
     const file = join(root, "notes.txt");
     await writeFile(file, "text");
 
-    await expect(failure(join(root, "missing"))).resolves.toMatchObject({ status: 400 });
+    await expect(failure(join(root, "missing"))).resolves.toMatchObject({
+      _tag: "FoldersError",
+      message: expect.stringContaining("does not exist"),
+    });
     await expect(failure(file)).resolves.toMatchObject({
-      status: 400,
+      _tag: "FoldersError",
       message: expect.stringContaining("not a folder"),
     });
-  });
-
-  it("reports a filesystem root without a parent", async () => {
-    const filesystemRoot = parse(root).root;
-    expect((await run(filesystemRoot, { limit: 0 })).parentPath).toBeNull();
   });
 });

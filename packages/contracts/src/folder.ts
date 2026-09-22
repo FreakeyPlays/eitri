@@ -1,8 +1,5 @@
 import * as Schema from "effect/Schema";
 
-/** Route served by the backend for browsing its filesystem. */
-export const FOLDERS_ENDPOINT = "/api/folders";
-
 export const FOLDER_PATH_MESSAGE =
   "Enter an absolute folder path, or use ~ for the server home folder.";
 
@@ -32,12 +29,13 @@ export type FolderEntry = typeof FolderEntrySchema.Type;
 
 export const FolderListingSchema = Schema.Struct({
   path: Schema.String,
-  parentPath: Schema.NullOr(Schema.String),
   directories: Schema.Array(FolderEntrySchema),
   truncated: Schema.Boolean,
 });
 
 export type FolderListing = typeof FolderListingSchema.Type;
 
-/** A rejected browse request answers with a message in this shape. */
-export const BrowseFoldersFailureSchema = Schema.String;
+/** Why a folder could not be listed, as one sentence the folder browser can show. */
+export class FoldersError extends Schema.TaggedError<FoldersError>()("FoldersError", {
+  message: Schema.String,
+}) {}

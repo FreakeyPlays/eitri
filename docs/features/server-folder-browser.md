@@ -60,3 +60,8 @@ Manual testing remains: exercise home, parent, typed-path and directory navigati
 `FolderBrowserService` is gone. Listing a server folder is `ProjectService.listFolders()`,
 beside the native `pickFolder()`, since both exist only to find a project folder.
 The browser component owns its navigation state and the newest-navigation guard.
+
+## Revision — 2026-09-23
+
+Folders are listed by the `folders.browse` RPC instead of `GET /api/folders`. The
+listing no longer carries `parentPath`: no client navigated upwards with it.

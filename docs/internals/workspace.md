@@ -5,13 +5,13 @@ A bun workspace driven by [vite-plus](https://vite.plus) (`vp`).
 ## apps
 
 - `apps/client` (`@eitri/client`): a shared Angular UI for the web and Tauri desktop clients. A mobile client is planned.
-- `apps/server` (`@eitri/server`): TypeScript HTTP server running on Bun, bundled with `vp pack`. Imports the shared Effect contracts directly. Tauri ships it as a compiled Bun sidecar; see [Architecture](architecture.md).
+- `apps/server` (`@eitri/server`): TypeScript RPC server running on Bun, bundled with `vp pack`. Imports the shared Effect contracts directly. Tauri ships it as a compiled Bun sidecar; see [Architecture](architecture.md).
 
 Reusable Spartan Helm components live in `apps/client/projects/ui` and are imported through the client’s `@ui/*` aliases. Storybook configuration lives in `apps/client/.storybook`, with stories alongside client components.
 
 ## packages
 
-- `packages/contracts` (`@eitri/contracts`): shared Effect schemas and derived types. Anything both a client and the backend must agree on belongs here, including the wire constants (`AGENT_ENDPOINT`, `PROJECTS_ENDPOINT`) that name where a request goes.
+- `packages/contracts` (`@eitri/contracts`): shared Effect schemas and derived types. Anything both a client and the backend must agree on belongs here, including `EitriRpcs` in `@eitri/contracts/rpc`, the group of every call a client can make, and `RPC_PATH`, where the server accepts its WebSocket.
 - `packages/shared` (`@eitri/shared`): framework-independent behavior derived from those contracts, currently validating agent and project input and reading their replies.
 
 ## Other top-level directories

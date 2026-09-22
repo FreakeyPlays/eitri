@@ -53,3 +53,13 @@ Manual testing remains: verify two client instances keep independent selections,
 Relocation is gone: `PATCH /api/projects` only renames. Nothing in any client
 moved a project, so the path update, its contract and its conflict rule were
 unused. Stable IDs remain, so relocation can return once chats reference projects.
+
+## Revision — 2026-09-23
+
+The client no longer persists its selection in local storage. The server keeps
+the project collection in SQLite; which project a window shows is transient, and
+every start begins on all projects. Restore-on-start, its fallback notice and the
+backend-scoped storage key are gone with it.
+
+Projects are read and changed through the `projects.*` RPCs over the server's
+WebSocket instead of `/api/projects`; payloads and answers are unchanged.

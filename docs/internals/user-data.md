@@ -29,7 +29,8 @@ their own. Only `bin.ts` decides, so no library call can quietly reach real data
 | Tests                                               | a throwaway directory per test |
 
 Development uses its own directory so experiments never touch the data of an
-installed Eitri. Tests pass a temporary directory in process, and set
+installed Eitri. It survives restarts like real data does, and migrations keep it
+current. Tests pass a temporary directory in process, and set
 `EITRI_DATA_DIR` for the executable — including the compiled sidecar.
 
 ## state.sqlite
@@ -40,21 +41,32 @@ holds a name the user chose: while it is null the project follows its folder.
 Saving an empty name clears it back to null; any other name is stored as typed,
 including one that happens to match the folder. Reopening a folder never disturbs
 the name it already carries.
-Selection belongs to each client and is not stored as server-global state. The
-client keeps its `selectedId` in local storage under
-`eitri.project-selection:desktop-local` for desktop or a key scoped to the web
-origin.
+Which project a window shows is not stored anywhere: every client starts on all
+projects.
 
-The database uses SQLite's `user_version` as its schema marker. Project
-mutations and first-run schema creation use immediate transactions, so concurrent
-backend connections cannot silently replace one another's project list.
-Connections have bounded busy handling and close with the server that owns them.
+`database.ts` opens the file through Effect SQL's Bun client, which serializes
+access, waits up to five seconds for a busy database, uses WAL (so
+`state.sqlite-wal` and `state.sqlite-shm` sit beside it) and runs every explicit
+transaction as `BEGIN IMMEDIATE`. Concurrent servers therefore cannot silently
+replace one another's project list. The connection closes with the server.
+
+Schema changes are migrations, the way T3 Code keeps its own: one file per change
+in `apps/server/src/migrations/`, named `<id>_<name>.ts`, whose default export is
+the Effect that applies it. `database.ts` lists each one in a static record, so the
+compiled sidecar carries them, and Effect's `Migrator` runs the ones a database has
+not recorded in `effect_sql_migrations`, all in one transaction, before the server
+answers anything. A development database is upgraded exactly like a user's.
+
+To change the schema, add the next file (say `002_project_icons.ts`) and list it in
+`database.ts`. Never edit a migration that shipped: databases that already ran it
+would not see the edit. The first migration uses `IF NOT EXISTS`, so databases from
+before migrations were tracked are adopted as they are.
 
 Rules the store keeps:
 
 - **A project counts as open only after its transaction commits.**
-- **Unknown storage is never overwritten.** Unexpected unversioned tables, a mismatched current schema, and newer database versions
-  fail with the file named in the error.
+- **Newer data is never touched.** A database that recorded a migration this
+  Eitri does not know fails with the file named in the error.
 - **A missing folder is not a deletion.** Remembered records remain until the
   user forgets them, and forgetting never touches the folder on disk.
 - **Canonical paths are unique.** A symlink or a `..` detour cannot create a

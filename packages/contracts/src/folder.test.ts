@@ -25,17 +25,10 @@ describe("FolderListingSchema", () => {
   it("carries canonical child paths and truncation", () => {
     const listing = {
       path: "/srv/work",
-      parentPath: "/srv",
       directories: [{ name: "eitri", path: "/srv/work/eitri" }],
       truncated: true,
     };
 
     expect(decode(listing)).toEqual(listing);
-  });
-
-  it("represents a filesystem root without a parent", () => {
-    expect(
-      decode({ path: "/", parentPath: null, directories: [], truncated: false }).parentPath,
-    ).toBeNull();
   });
 });

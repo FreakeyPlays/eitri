@@ -59,21 +59,28 @@ synchronously. Resolve dependencies before awaiting asynchronous work.
 
 ## Runtime services
 
-`AgentService` owns requests and response handling. `ClientService` selects the web
+`ServerService` is the one connection to the server: an Effect RPC client over a
+WebSocket, typed by `EitriRpcs` from `@eitri/contracts/rpc`. `call(tag, payload)`
+resolves with the answer or rejects with a sentence the user can act on — the
+server's own for a refusal, a plain one for a lost connection or a server fault.
+The socket opens with the first call and reconnects on its own after the server
+restarts; while it is gone, calls fail at once instead of hanging. Only this
+service knows the transport, so domain services such as `AgentService` and
+`ProjectService` stay unchanged if it ever moves. `ClientService` selects the web
 or Tauri adapter that resolves the server address at runtime. Pages use these
 services rather than choosing a platform or embedding a server origin themselves.
 
 `ProjectService` holds what the user works in — one project, or all of them — and
 the projects they can return to. The backend owns that list; see
 [User data](user-data.md). A project becomes active only after the backend confirms
-it opened; choosing all projects is local. The selected project ID is stored per
-client and does not alter the server's shared project list. `AppComponent` calls
-`load()` once at startup to restore the last selection.
+it opened; choosing all projects is local. The selection lives only in memory and
+never alters the server's shared project list. `AppComponent` calls `load()` once
+at startup to read the list.
 
 Finding a folder to open belongs to the same service, because it has no other
 purpose. `canPickFolder` names the one platform difference: desktop calls
 `pickFolder()` for the native picker, while web browses the server's folders with
-`listFolders(path?)`, a stateless read of `/api/folders` that never touches
+`listFolders(path?)`, a stateless `folders.browse` call that never touches
 project state.
 
 `FolderBrowserComponent` owns its navigation: home, typed paths and the listing on
@@ -91,11 +98,14 @@ Selecting all projects is a scope, not a screen: `allSelected()` is true and
 every project's. Forgetting the selected project widens the scope the same way
 rather than choosing a replacement.
 
-Projects are chosen in exactly one place: the dropdown on the project name in the
-app bar. `ProjectSwitcherComponent` is that name and its `brn-popover`; the app bar
-only places it. No second entry point in the sidebar, the start page or the command
-palette — the name in the app bar is both the label and the control, so there is
-nothing to keep in sync.
+Projects are chosen in one menu: the dropdown on the project name in the app bar.
+`ProjectSwitcherComponent` is that name and its `brn-popover`; the app bar only
+places it. The palette's "Projects" command opens the same dropdown by setting
+`LayoutService.projectMenu`, which the popover's state follows, so there is still
+only one list to keep in sync.
+
+Which project a window shows is not persisted. Every start reads the collection
+and begins on all projects; the server remembers the projects, not the selection.
 
 Each row carries an always-visible settings button, because an action that only
 appears on hover cannot be found by anyone who is not already looking for it. It

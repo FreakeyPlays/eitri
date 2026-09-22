@@ -1,5 +1,5 @@
-import { type Agent, AgentRequestSchema } from "@eitri/contracts/agent";
-import { Data, type Duration, Effect, type PlatformError, Schema, Stream } from "effect";
+import { type Agent, AgentError, type AgentRequest } from "@eitri/contracts/agent";
+import { type Duration, Effect, type PlatformError, Stream } from "effect";
 import { ChildProcess } from "effect/unstable/process";
 
 const commands = {
@@ -26,22 +26,12 @@ const commands = {
   ],
 } satisfies Record<Agent, [string, ...string[]]>;
 
-/** Every agent failure the client is allowed to see; the message is sent back as the answer. */
-export class AgentError extends Data.TaggedError("AgentError")<{ message: string }> {}
-
-const decodeRequest = Schema.decodeUnknownEffect(AgentRequestSchema);
-
 const collect = (output: Stream.Stream<Uint8Array, PlatformError.PlatformError>) =>
   Stream.mkString(Stream.decodeText(output));
 
-/** Validates at the backend boundary before starting an installed CLI. */
-export const askAgent = (input: unknown) =>
-  Effect.gen(function* () {
-    const request = yield* decodeRequest(input).pipe(
-      Effect.mapError((error) => new AgentError({ message: error.message })),
-    );
-    return yield* runAgent(commands[request.agent], request.prompt);
-  });
+/** Runs the request's CLI; the RPC layer has already validated the prompt. */
+export const askAgent = (request: AgentRequest) =>
+  runAgent(commands[request.agent], request.prompt);
 
 /** Passes literal stdin without a shell; interrupting the run kills the child and its group. */
 export const runAgent = (
