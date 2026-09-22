@@ -10,23 +10,25 @@
   @if (projects.error(); as error) {
     <div class="flex flex-col gap-1.5 px-2 py-1.5 text-xs text-destructive" role="alert">
       <span>{{ error }}</span>
-      <button
-        hlmBtn
-        variant="outline"
-        size="sm"
-        class="self-start"
-        [disabled]="projects.busy()"
-        (click)="retry()"
-      >
-        Try again
-      </button>
+      @if (!projects.loaded()) {
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          class="self-start"
+          [disabled]="projects.busy()"
+          (click)="projects.load()"
+        >
+          Try again
+        </button>
+      }
     </div>
   }
 
   @if (browsing()) {
     <app-folder-browser
       [disabled]="projects.busy()"
-      (selected)="selectFolder($event)"
+      (selected)="choose($event)"
       (cancelled)="browsing.set(false)"
     />
   } @else if (projects.projects().length) {
@@ -97,7 +99,7 @@
       size="sm"
       class="mt-1 w-full justify-start font-normal"
       [disabled]="projects.busy()"
-      (click)="projects.canBrowse ? browse() : showBrowser()"
+      (click)="openFolder()"
     >
       Open folder…
     </button>

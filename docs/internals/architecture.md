@@ -34,8 +34,7 @@ The RPC and WebSocket parts remain a separate planned step.
   execution, timeouts, and cleanup. Each request starts a fresh conversation.
   It also owns the user's data directory: projects have stable IDs and live in
   `state.sqlite` there, so clients share the remembered collection. Each client
-  persists its own selected project locally. Existing JSON project lists are
-  imported once without changing the original file.
+  persists its own selected project locally.
   See [User data](user-data.md).
 - **Contracts** (`packages/contracts`): shared schemas, derived types, and endpoint
   constants defining what crosses the client/server boundary. Keep execution and

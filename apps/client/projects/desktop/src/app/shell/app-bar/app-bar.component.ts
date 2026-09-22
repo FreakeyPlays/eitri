@@ -2,44 +2,34 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
-  computed,
   DestroyRef,
   inject,
   signal,
 } from "@angular/core";
-import { BrnPopoverImports } from "@spartan-ng/brain/popover";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { HlmButton } from "@ui/button";
 import { HlmTooltip } from "@ui/tooltip";
 import {
-  ChevronsUpDownIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
   SquareTerminalIcon,
 } from "ng-animated-icons";
-import { ProjectService } from "@core/projects/project.service";
 import { AnimateIconDirective } from "@shell/animate-icon.directive";
 import { LayoutService } from "@shell/layout/layout.service";
-import { ProjectMenuComponent } from "@shell/projects/project-menu.component";
+import { ProjectSwitcherComponent } from "@shell/projects/project-switcher.component";
 
-/**
- * The window's title bar: drags the window, names the open project, and toggles
- * the panels the page has. The project name is the only way into the project
- * dropdown, so there is one place to switch and nothing to duplicate elsewhere.
- */
+/** The window's title bar: drags the window, names the open project, and toggles the page's panels. */
 @Component({
   selector: "app-app-bar",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    BrnPopoverImports,
     HlmButton,
     HlmTooltip,
     AnimateIconDirective,
-    ProjectMenuComponent,
-    ChevronsUpDownIcon,
+    ProjectSwitcherComponent,
     PanelLeftCloseIcon,
     PanelLeftOpenIcon,
     PanelRightCloseIcon,
@@ -52,19 +42,6 @@ import { ProjectMenuComponent } from "@shell/projects/project-menu.component";
 export class AppBarComponent {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly layout = inject(LayoutService);
-  protected readonly projects = inject(ProjectService);
-
-  /** What the user works in, named here on every page so it is never in doubt. */
-  protected readonly projectName = computed(() => {
-    const active = this.projects.active();
-    if (active) return active.name;
-    return this.projects.projects().length ? "All projects" : "No project";
-  });
-  protected readonly projectLabel = computed(() => {
-    const active = this.projects.active();
-    if (active) return `Project ${active.name}. Switch project.`;
-    return this.projects.projects().length ? "All projects. Switch project." : "Open a project";
-  });
   /** macOS draws its window buttons over the app bar in Tauri, except in fullscreen where they hide. */
   protected readonly windowControlsInset = signal(false);
 

@@ -1,0 +1,21 @@
+<brn-popover #menu="brnPopover" align="start" [sideOffset]="6" [role]="null">
+  <button
+    brnPopoverTrigger
+    hlmBtn
+    variant="ghost"
+    size="sm"
+    class="ml-2 max-w-64 gap-1.5 font-normal"
+    appAnimateIcon
+    #icon="appAnimateIcon"
+    [title]="projects.active()?.path ?? 'Choose what to work in'"
+    [attr.aria-label]="label()"
+    [attr.aria-expanded]="menu.stateComputed() === 'open'"
+    aria-haspopup="true"
+  >
+    <span class="truncate">{{ name() }}</span>
+    <i-chevrons-up-down size="14" aria-hidden="true" [animate]="icon.animate()" />
+  </button>
+  <div *brnPopoverContent class="w-80 rounded-xl border shadow-md">
+    <app-project-menu (chosen)="menu.close()" />
+  </div>
+</brn-popover>

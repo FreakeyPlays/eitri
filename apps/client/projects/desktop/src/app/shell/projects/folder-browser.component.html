@@ -15,15 +15,15 @@
   />
 </div>
 
-@if (folders.loading()) {
+@if (loading()) {
   <span class="text-xs text-muted-foreground" role="status">Loading folders…</span>
 }
 
-@if (folders.error(); as error) {
+@if (error(); as error) {
   <p class="text-xs text-destructive" role="alert">{{ error }}</p>
 }
 
-@if (folders.current(); as current) {
+@if (current(); as current) {
   <div class="max-h-64 min-h-0 overflow-y-auto rounded-md border p-1">
     @for (directory of directories(); track directory.path) {
       <button
@@ -33,7 +33,7 @@
         type="button"
         class="w-full justify-start truncate font-normal"
         [title]="directory.path"
-        [disabled]="disabled() || folders.loading()"
+        [disabled]="disabled() || loading()"
         (click)="open(directory.path)"
       >
         {{ directory.name }}
@@ -66,15 +66,7 @@
   >
     Cancel
   </button>
-  <button
-    hlmBtn
-    size="sm"
-    type="button"
-    [disabled]="
-      disabled() || folders.loading() || folders.error() !== null || folders.current() === null
-    "
-    (click)="choose()"
-  >
+  <button hlmBtn size="sm" type="button" [disabled]="!canChoose()" (click)="choose()">
     Select this folder
   </button>
 </div>

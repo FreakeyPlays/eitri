@@ -54,3 +54,9 @@ height, and clicking a folder or **Up** rewrites the field to that folder with a
 trailing separator, ready for the next filter.
 
 Manual testing remains: exercise home, parent, typed-path and directory navigation in web; cover spaces/Unicode, symlinks, empty, inaccessible, missing and truncated directories; verify error recovery and stale navigation; confirm failed opens and Cancel preserve selection; and verify native desktop picking.
+
+## Revision — 2026-09-22 (structure)
+
+`FolderBrowserService` is gone. Listing a server folder is `ProjectService.listFolders()`,
+beside the native `pickFolder()`, since both exist only to find a project folder.
+The browser component owns its navigation state and the newest-navigation guard.

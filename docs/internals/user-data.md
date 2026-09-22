@@ -43,32 +43,17 @@ the name it already carries.
 Selection belongs to each client and is not stored as server-global state. The
 client keeps its `selectedId` in local storage under
 `eitri.project-selection:desktop-local` for desktop or a key scoped to the web
-origin. The legacy `lastProjectPath` is read only during version-1 import and
-is not carried into SQLite.
+origin.
 
-The database uses SQLite's `user_version` as its schema and initialization
-marker. Project mutations and first-run initialization use immediate
-transactions, so concurrent backend connections cannot silently replace one
-another's project list. Connections have bounded busy handling and close with the
-server that owns them.
-
-On the first start, the backend imports a sibling `projects.json` in either of
-the historical formats:
-
-- version 1: paths and timestamps; the importer assigns project IDs
-- version 2: IDs, paths, and timestamps; the importer preserves them
-
-The import retains file order and missing-directory records. Schema creation,
-all imported rows, and the database version marker commit together. The original
-JSON file remains unchanged as migration evidence. Once the database is marked
-initialized, deleting every project does not cause stale JSON to be imported
-again.
+The database uses SQLite's `user_version` as its schema marker. Project
+mutations and first-run schema creation use immediate transactions, so concurrent
+backend connections cannot silently replace one another's project list.
+Connections have bounded busy handling and close with the server that owns them.
 
 Rules the store keeps:
 
 - **A project counts as open only after its transaction commits.**
-- **Unknown storage is never overwritten.** Malformed legacy JSON, unexpected
-  unversioned tables, a mismatched current schema, and newer database versions
+- **Unknown storage is never overwritten.** Unexpected unversioned tables, a mismatched current schema, and newer database versions
   fail with the file named in the error.
 - **A missing folder is not a deletion.** Remembered records remain until the
   user forgets them, and forgetting never touches the folder on disk.

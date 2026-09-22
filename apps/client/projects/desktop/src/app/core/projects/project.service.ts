@@ -1,5 +1,11 @@
 import { computed, inject, Service, signal } from "@angular/core";
+import { FOLDERS_ENDPOINT, type FolderListing } from "@eitri/contracts/folder";
 import { type Project, PROJECTS_ENDPOINT } from "@eitri/contracts/project";
+import {
+  readBrowseFoldersFailure,
+  readFolderListing,
+  toBrowseFoldersRequest,
+} from "@eitri/shared/folder";
 import {
   readOpenedProject,
   readProjects,
@@ -20,7 +26,11 @@ interface Known {
 const NOTHING: Known = { projects: [], selectedId: null, notice: null };
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/** The shared project collection and this client's locally persisted selection. */
+/**
+ * Everything about what the user works in: the shared project collection, this
+ * client's locally persisted selection, and the two ways to find a folder to open
+ * as a project — the platform's picker on desktop, the server's folders on web.
+ */
 @Service()
 export class ProjectService {
   private readonly client = inject(ClientService);
@@ -28,6 +38,7 @@ export class ProjectService {
   private readonly pending = signal(false);
   private readonly restoring = signal(false);
   private readonly failure = signal<string | null>(null);
+  private readonly listed = signal(false);
   private started: Promise<void> | undefined;
 
   readonly projects = computed(() => this.known().projects);
@@ -39,7 +50,10 @@ export class ProjectService {
   readonly notice = computed(() => this.known().notice);
   readonly error = this.failure.asReadonly();
   readonly busy = computed(() => this.pending() || this.restoring());
-  readonly canBrowse = this.client.selectDirectory !== null;
+  /** False until the collection was read once, so a failed first read can be retried. */
+  readonly loaded = this.listed.asReadonly();
+  /** Desktop has a native folder picker; web browses the server's folders instead. */
+  readonly canPickFolder = this.client.selectDirectory !== null;
 
   load(): Promise<void> {
     return (this.started ??= this.restore());
@@ -57,16 +71,16 @@ export class ProjectService {
     const opened = await this.request("POST", request, readOpenedProject);
     if (!opened) return false;
     this.known.set({ projects: opened.projects, selectedId: opened.openedProjectId, notice: null });
-    await this.remember(opened.openedProjectId);
+    this.remember(opened.openedProjectId);
     return true;
   }
 
   /** Selecting every project is local client state and performs no server request. */
-  async openAll(): Promise<boolean> {
+  openAll(): boolean {
     if (this.busy()) return false;
     this.failure.set(null);
     this.known.update((known) => ({ ...known, selectedId: null, notice: null }));
-    await this.remember(null);
+    this.remember(null);
     return true;
   }
 
@@ -102,11 +116,12 @@ export class ProjectService {
       ? currentId
       : null;
     this.known.set({ projects: snapshot.projects, selectedId, notice: null });
-    if (selectedId === null) await this.remember(null);
+    if (selectedId === null) this.remember(null);
     return true;
   }
 
-  async browse(): Promise<string | null> {
+  /** Desktop only: resolves to the folder the user picked, or null when they cancelled. */
+  async pickFolder(): Promise<string | null> {
     const picker = this.client.selectDirectory;
     if (!picker) return null;
     try {
@@ -117,6 +132,20 @@ export class ProjectService {
     }
   }
 
+  /**
+   * Lists one folder on the server, or its user's home when `path` is omitted.
+   * Throws a sentence the folder browser can show; it never touches project state.
+   */
+  async listFolders(path?: string): Promise<FolderListing> {
+    const { path: browsed } = toBrowseFoldersRequest(path);
+    const query = browsed === undefined ? "" : `?${new URLSearchParams({ path: browsed })}`;
+    const reply = await this.call(FOLDERS_ENDPOINT + query, {
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!reply.ok) throw new Error(readBrowseFoldersFailure(reply.body));
+    return readFolderListing(reply.body);
+  }
+
   private async restore(): Promise<void> {
     this.restoring.set(true);
     try {
@@ -125,9 +154,10 @@ export class ProjectService {
         this.started = undefined;
         return;
       }
+      this.listed.set(true);
       this.known.set({ projects: snapshot.projects, selectedId: null, notice: null });
 
-      const selectedId = await this.recall();
+      const selectedId = this.recall();
       if (!selectedId) return;
       const selected = snapshot.projects.find((project) => project.id === selectedId);
       if (!selected) {
@@ -135,7 +165,7 @@ export class ProjectService {
           ...known,
           notice: "The previously selected project is no longer in the list. Showing all projects.",
         }));
-        await this.remember(null);
+        this.remember(null);
         return;
       }
 
@@ -153,7 +183,7 @@ export class ProjectService {
             ? `${notice} Showing all projects.`
             : "The previously selected project could not be opened. Showing all projects.",
         }));
-        await this.remember(null);
+        this.remember(null);
         return;
       }
       this.known.set({
@@ -161,12 +191,13 @@ export class ProjectService {
         selectedId: opened.openedProjectId,
         notice: null,
       });
-      await this.remember(opened.openedProjectId);
+      this.remember(opened.openedProjectId);
     } finally {
       this.restoring.set(false);
     }
   }
 
+  /** One collection request at a time; its failure becomes `error` for the menu to show. */
   private async request<T>(
     method: "GET" | "POST" | "PATCH" | "DELETE",
     body: unknown,
@@ -176,9 +207,8 @@ export class ProjectService {
     this.pending.set(true);
     this.failure.set(null);
     try {
-      const serverUrl = await this.client.getServerUrl();
-      const response = await fetch(
-        endpointUrl(serverUrl, PROJECTS_ENDPOINT),
+      const reply = await this.call(
+        PROJECTS_ENDPOINT,
         method === "GET"
           ? {}
           : {
@@ -186,23 +216,12 @@ export class ProjectService {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             },
-      ).catch((cause: unknown) => {
-        throw new Error(
-          "Could not reach the project backend. Restart Eitri or check the server connection.",
-          { cause },
-        );
-      });
-      if (!response.headers.get("content-type")?.includes("application/json")) {
-        throw new Error(
-          "Project backend unavailable. Restart Eitri or check that the server is running.",
-        );
-      }
-      const reply: unknown = await response.json();
-      if (!response.ok) {
-        this.failure.set(readProjectsFailure(reply));
+      );
+      if (!reply.ok) {
+        this.failure.set(readProjectsFailure(reply.body));
         return null;
       }
-      return read(reply);
+      return read(reply.body);
     } catch (error: unknown) {
       this.failure.set(messageOf(error));
       return null;
@@ -211,22 +230,40 @@ export class ProjectService {
     }
   }
 
-  private async selectionKey(): Promise<string> {
-    const backend = this.canBrowse ? "desktop-local" : globalThis.location?.origin || "web-local";
+  /** Reaches the server and reads its JSON answer, or throws a sentence the user can act on. */
+  private async call(endpoint: string, init: RequestInit) {
+    const serverUrl = await this.client.getServerUrl();
+    const response = await fetch(endpointUrl(serverUrl, endpoint), init).catch((cause: unknown) => {
+      throw new Error(
+        "Could not reach the Eitri server. Restart Eitri or check the server connection.",
+        { cause },
+      );
+    });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("Eitri server unavailable. Restart Eitri or check that it is running.");
+    }
+    const body: unknown = await response.json();
+    return { ok: response.ok, body };
+  }
+
+  private selectionKey(): string {
+    const backend = this.canPickFolder
+      ? "desktop-local"
+      : globalThis.location?.origin || "web-local";
     return `eitri.project-selection:${backend}`;
   }
 
-  private async recall(): Promise<string | null> {
+  private recall(): string | null {
     try {
-      return globalThis.localStorage?.getItem(await this.selectionKey()) ?? null;
+      return globalThis.localStorage?.getItem(this.selectionKey()) ?? null;
     } catch {
       return null;
     }
   }
 
-  private async remember(id: string | null): Promise<void> {
+  private remember(id: string | null): void {
     try {
-      const key = await this.selectionKey();
+      const key = this.selectionKey();
       if (id === null) globalThis.localStorage?.removeItem(key);
       else globalThis.localStorage?.setItem(key, id);
     } catch {

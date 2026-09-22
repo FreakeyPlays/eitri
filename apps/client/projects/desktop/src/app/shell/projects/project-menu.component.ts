@@ -14,7 +14,7 @@ import { HlmCommandImports } from "@ui/command";
 import { HlmDialogService } from "@ui/dialog";
 import { ProjectService } from "@core/projects/project.service";
 import { FolderBrowserComponent } from "./folder-browser.component";
-import { ProjectSettingsComponent, type ProjectSettingsResult } from "./project-settings.component";
+import { ProjectSettingsComponent } from "./project-settings.component";
 
 /**
  * What the app bar's project dropdown contains: what the user can work in, and a
@@ -50,8 +50,8 @@ export class ProjectMenuComponent {
     if (await this.projects.open(path)) this.chosen.emit();
   }
 
-  protected async chooseAll() {
-    if (await this.projects.openAll()) this.chosen.emit();
+  protected chooseAll() {
+    if (this.projects.openAll()) this.chosen.emit();
   }
 
   /**
@@ -59,27 +59,22 @@ export class ProjectMenuComponent {
    * Either outcome keeps the dropdown open: tidying up is rarely a single action.
    */
   protected openSettings(project: Project) {
-    this.dialog.open<ProjectSettingsResult, { project: Project }>(ProjectSettingsComponent, {
+    this.dialog.open<void, { project: Project }>(ProjectSettingsComponent, {
       context: { project },
       contentClass: "sm:max-w-md",
     });
   }
 
-  /** Desktop only: the platform names the folder, then it opens like any other. */
-  protected async browse() {
-    const picked = await this.projects.browse();
+  /**
+   * Desktop asks the platform to name the folder, then opens it like any other.
+   * Web has no such picker and browses the server's folders in place instead.
+   */
+  protected async openFolder() {
+    if (!this.projects.canPickFolder) {
+      this.browsing.set(true);
+      return;
+    }
+    const picked = await this.projects.pickFolder();
     if (picked !== null) await this.choose(picked);
-  }
-
-  protected showBrowser() {
-    this.browsing.set(true);
-  }
-
-  protected selectFolder(path: string) {
-    if (!this.projects.busy()) void this.choose(path);
-  }
-
-  protected retry() {
-    void this.projects.load();
   }
 }

@@ -69,20 +69,20 @@ describe("ProjectSettingsComponent", () => {
     await vi.waitFor(() =>
       expect(rename).toHaveBeenCalledExactlyOnceWith(eitri.id, "Client portal"),
     );
-    await vi.waitFor(() => expect(close).toHaveBeenCalledWith("renamed"));
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
 
   it("clears the name when the field is emptied, so the folder's name is used", async () => {
     const { element, button, type } = await render();
 
-    expect(element.textContent).toContain("Leave it empty to use the folder's name");
+    expect(element.textContent).toContain("Leave it empty to fall back to the folder name.");
 
     type("   ");
     expect(button("Save")!.disabled).toBe(false);
     button("Save")!.click();
 
     await vi.waitFor(() => expect(rename).toHaveBeenCalledExactlyOnceWith(eitri.id, ""));
-    await vi.waitFor(() => expect(close).toHaveBeenCalledWith("renamed"));
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
 
   it("stores a name matching the folder rather than treating it as a reset", async () => {
@@ -107,18 +107,18 @@ describe("ProjectSettingsComponent", () => {
     expect(element.querySelector('[role="alert"]')?.textContent).toContain("not in the list");
   });
 
-  it("removes the project only after confirming, and says the files stay", async () => {
+  it("removes the project only after confirming", async () => {
     const { fixture, element, button } = await render();
 
-    button("Remove from Eitri")!.click();
+    button("Remove Project")!.click();
     fixture.detectChanges();
 
     expect(forget).not.toHaveBeenCalled();
-    expect(element.textContent).toContain("files stay on disk");
+    expect(element.textContent).toContain("Are you sure");
 
-    button("Remove project")!.click();
+    button("Yes, delete it!")!.click();
     await vi.waitFor(() => expect(forget).toHaveBeenCalledExactlyOnceWith(eitri.id));
-    await vi.waitFor(() => expect(close).toHaveBeenCalledWith("removed"));
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
 
   it("holds every action while a request is pending", async () => {
@@ -127,7 +127,7 @@ describe("ProjectSettingsComponent", () => {
 
     expect(field.disabled).toBe(true);
     expect(button("Save")!.disabled).toBe(true);
-    expect(button("Remove from Eitri")!.disabled).toBe(true);
+    expect(button("Remove Project")!.disabled).toBe(true);
     expect(rename).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import { TestBed } from "@angular/core/testing";
+import { FOLDERS_ENDPOINT } from "@eitri/contracts/folder";
 import { PROJECT_PATH_MESSAGE, PROJECTS_ENDPOINT } from "@eitri/contracts/project";
 import { ClientService } from "@core/client/client.service";
 import { ProjectService } from "./project.service";
@@ -147,12 +148,14 @@ describe("ProjectService", () => {
     const projects = service();
 
     await projects.load();
-    expect(projects.error()).toContain("Could not reach the project backend");
+    expect(projects.error()).toContain("Could not reach the Eitri server");
+    expect(projects.loaded()).toBe(false);
 
     fetchMock.mockResolvedValue(json({ projects: [eitri] }));
     await projects.load();
 
     expect(projects.error()).toBeNull();
+    expect(projects.loaded()).toBe(true);
     expect(projects.projects()).toEqual([eitri]);
   });
 
@@ -223,7 +226,7 @@ describe("ProjectService", () => {
     const projects = service();
     await projects.load();
 
-    expect(await projects.openAll()).toBe(true);
+    expect(projects.openAll()).toBe(true);
 
     expect(projects.allSelected()).toBe(true);
     expect(projects.projects()).toEqual([eitri]);
@@ -331,7 +334,7 @@ describe("ProjectService", () => {
 
     expect(projects.busy()).toBe(true);
     expect(await projects.open(other.path)).toBe(false);
-    expect(await projects.openAll()).toBe(false);
+    expect(projects.openAll()).toBe(false);
     answerOpen(json({ projects: [eitri], openedProjectId: eitri.id }));
     await restoring;
 
@@ -344,8 +347,8 @@ describe("ProjectService", () => {
     selectDirectory.mockResolvedValue("/git/picked");
     const projects = service(selectDirectory);
 
-    expect(await projects.browse()).toBe("/git/picked");
-    expect(projects.canBrowse).toBe(true);
+    expect(await projects.pickFolder()).toBe("/git/picked");
+    expect(projects.canPickFolder).toBe(true);
   });
 
   it.each([
@@ -355,8 +358,51 @@ describe("ProjectService", () => {
     selectDirectory.mockResolvedValue(null);
     const projects = service(picker);
 
-    expect(await projects.browse()).toBeNull();
-    expect(projects.canBrowse).toBe(picker !== null);
+    expect(await projects.pickFolder()).toBeNull();
+    expect(projects.canPickFolder).toBe(picker !== null);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  describe("listFolders", () => {
+    const listing = (path: string) => ({
+      path,
+      parentPath: path === "/" ? null : "/",
+      directories: [{ name: "child", path: `${path}/child` }],
+      truncated: false,
+    });
+
+    it("starts at server home without sending a path", async () => {
+      fetchMock.mockResolvedValue(json(listing("/home/chris")));
+
+      expect((await service().listFolders()).path).toBe("/home/chris");
+      expect(fetchMock).toHaveBeenCalledExactlyOnceWith(FOLDERS_ENDPOINT, {
+        signal: expect.any(AbortSignal),
+      });
+    });
+
+    it("encodes an explicit server path against the runtime endpoint", async () => {
+      serverUrl = "http://127.0.0.1:54321/";
+      fetchMock.mockResolvedValue(json(listing("/srv/space ü")));
+
+      await service().listFolders("/srv/space ü");
+
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        `http://127.0.0.1:54321${FOLDERS_ENDPOINT}?path=%2Fsrv%2Fspace+%C3%BC`,
+      );
+    });
+
+    it("throws the backend's refusal without touching project state", async () => {
+      fetchMock.mockResolvedValue(json("“/gone” does not exist.", 400));
+      const projects = service();
+
+      await expect(projects.listFolders("/gone")).rejects.toThrow("“/gone” does not exist.");
+      expect(projects.error()).toBeNull();
+      expect(projects.busy()).toBe(false);
+    });
+
+    it("rejects a relative path before fetching", async () => {
+      await expect(service().listFolders("relative/path")).rejects.toThrow("absolute folder path");
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 });

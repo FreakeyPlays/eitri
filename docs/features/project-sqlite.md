@@ -46,3 +46,11 @@ Implemented SQLite-backed project storage, transactional schema initialization a
 Integrated validation passed: the root unit suite ran 32 files and 268 tests with zero failures; all six typecheck tasks, formatting for 257 files, Knip and dependency-cruiser passed. `vp check` reported three existing warnings in untouched shared UI files. Earlier focused server and compiled-sidecar tests and the server build also passed without using live userdata.
 
 Manual testing remains: start against disposable copies of representative version-1 and version-2 data, confirm projects and IDs survive restart, forget every project and restart without reimport, and confirm migration failures leave the legacy JSON unchanged.
+
+## Revision — 2026-09-22
+
+The JSON import is gone. No released Eitri ever wrote `projects.json` (v0.1.0
+stored no projects), so both historical formats only existed on this branch and
+the importer protected data no user has. The database now starts empty and keeps
+every other rule: versioned schema, immediate transactions, and refusal to touch
+unknown or newer storage.

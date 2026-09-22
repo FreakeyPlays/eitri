@@ -1,34 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { access, constants, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { access, constants, mkdir, realpath, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { Database } from "bun:sqlite";
-import type { OpenedProject, Projects } from "@eitri/contracts/project";
-import { Data, Effect, Schema, Semaphore } from "effect";
+import type { OpenedProject, Project, Projects } from "@eitri/contracts/project";
+import { Data, Effect, Semaphore } from "effect";
 
 const DATABASE_VERSION = 1;
 const BUSY_TIMEOUT_MS = 2_000;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const StoredProjectSchema = Schema.Struct({
-  id: Schema.String.check(
-    Schema.makeFilter((id) => (UUID.test(id) ? undefined : "Expected a project ID.")),
-  ),
-  path: Schema.String,
-  lastOpenedAt: Schema.String,
-});
-
-const LegacyV1Schema = Schema.Struct({
-  version: Schema.Literal(1),
-  lastProjectPath: Schema.NullOr(Schema.String),
-  projects: Schema.Array(Schema.Struct({ path: Schema.String, lastOpenedAt: Schema.String })),
-});
-
-const LegacyV2Schema = Schema.Struct({
-  version: Schema.Literal(2),
-  projects: Schema.Array(StoredProjectSchema),
-});
-
-type StoredProject = typeof StoredProjectSchema.Type;
 
 export class ProjectsError extends Data.TaggedError("ProjectsError")<{
   message: string;
@@ -51,39 +29,6 @@ const codeOf = (cause: unknown) =>
     ? String((cause as { code: unknown }).code)
     : undefined;
 const displayName = (path: string) => basename(path) || path;
-
-const decodeLegacy = (contents: string, file: string): ReadonlyArray<StoredProject> => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(contents);
-  } catch {
-    throw new ProjectsError({
-      message: `The legacy project list at ${file} is malformed. Move it aside or repair it before starting Eitri.`,
-      status: 500,
-    });
-  }
-
-  try {
-    if (typeof parsed === "object" && parsed !== null && "version" in parsed) {
-      if ((parsed as { version: unknown }).version === 1) {
-        return Schema.decodeUnknownSync(LegacyV1Schema)(parsed).projects.map((project) => ({
-          id: randomUUID(),
-          ...project,
-        }));
-      }
-      if ((parsed as { version: unknown }).version === 2) {
-        return Schema.decodeUnknownSync(LegacyV2Schema)(parsed).projects;
-      }
-    }
-  } catch {
-    // The actionable error below intentionally does not expose schema internals.
-  }
-
-  throw new ProjectsError({
-    message: `The legacy project list at ${file} has an unsupported or malformed format. Move it aside or repair it before starting Eitri.`,
-    status: 500,
-  });
-};
 
 const validateCurrentSchema = (db: Database, file: string) => {
   const columns = db.query("PRAGMA table_info(projects)").all() as Array<{
@@ -131,7 +76,6 @@ const validateCurrentSchema = (db: Database, file: string) => {
 /** SQLite-backed project identities owned by one server lifetime. */
 export const makeProjectStore = (dataDir: string): ProjectStore => {
   const databaseFile = join(dataDir, "state.sqlite");
-  const legacyFile = join(dataDir, "projects.json");
   const turns = Semaphore.makeUnsafe(1);
   let db: Database | undefined;
   let closed = false;
@@ -156,56 +100,25 @@ export const makeProjectStore = (dataDir: string): ProjectStore => {
       const current = connection;
       current.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
 
-      const version = Number(
-        (current.query("PRAGMA user_version").get() as { user_version: number }).user_version,
-      );
-      if (version > DATABASE_VERSION) {
-        throw new ProjectsError({
-          message: `The project database at ${databaseFile} uses schema version ${version}, but this Eitri supports version ${DATABASE_VERSION}. Upgrade Eitri before opening this data.`,
-          status: 500,
-        });
-      }
-      if (version === DATABASE_VERSION) {
-        validateCurrentSchema(current, databaseFile);
-        db = current;
-        return current;
-      }
-
-      const applicationTables = current
-        .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
-        .all();
-      if (applicationTables.length > 0) {
-        throw new ProjectsError({
-          message: `The unversioned project database at ${databaseFile} is not empty. Move it aside before starting Eitri.`,
-          status: 500,
-        });
-      }
-
-      let imported: ReadonlyArray<StoredProject> = [];
-      try {
-        imported = decodeLegacy(await readFile(legacyFile, "utf8"), legacyFile);
-      } catch (cause) {
-        if (codeOf(cause) !== "ENOENT") throw cause;
-      }
-
-      const initializeDatabase = current.transaction(() => {
-        const lockedVersion = Number(
+      // Checked under the write lock, so two servers starting at once create the schema once.
+      const prepare = current.transaction(() => {
+        const version = Number(
           (current.query("PRAGMA user_version").get() as { user_version: number }).user_version,
         );
-        if (lockedVersion > DATABASE_VERSION) {
+        if (version > DATABASE_VERSION) {
           throw new ProjectsError({
-            message: `The project database at ${databaseFile} uses schema version ${lockedVersion}, but this Eitri supports version ${DATABASE_VERSION}. Upgrade Eitri before opening this data.`,
+            message: `The project database at ${databaseFile} uses schema version ${version}, but this Eitri supports version ${DATABASE_VERSION}. Upgrade Eitri before opening this data.`,
             status: 500,
           });
         }
-        if (lockedVersion === DATABASE_VERSION) {
+        if (version === DATABASE_VERSION) {
           validateCurrentSchema(current, databaseFile);
           return;
         }
-        const lockedTables = current
+        const tables = current
           .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
           .all();
-        if (lockedTables.length > 0) {
+        if (tables.length > 0) {
           throw new ProjectsError({
             message: `The unversioned project database at ${databaseFile} is not empty. Move it aside before starting Eitri.`,
             status: 500,
@@ -220,14 +133,9 @@ export const makeProjectStore = (dataDir: string): ProjectStore => {
             sort_order INTEGER NOT NULL
           );
         `);
-        // Imported projects carry no chosen name, so they follow their folder until renamed.
-        const insert = current.query(
-          "INSERT INTO projects (id, path, name, last_opened_at, sort_order) VALUES ($id, $path, NULL, $lastOpenedAt, $sortOrder)",
-        );
-        imported.forEach((project, sortOrder) => insert.run({ ...project, sortOrder }));
         current.exec(`PRAGMA user_version = ${DATABASE_VERSION}`);
       });
-      initializeDatabase.immediate();
+      prepare.immediate();
       db = current;
       return current;
     } catch (cause) {
@@ -252,7 +160,7 @@ export const makeProjectStore = (dataDir: string): ProjectStore => {
       )
       .all()
       .map((row) => {
-        const { name, ...project } = row as StoredProject & { name: string | null };
+        const { name, ...project } = row as Omit<Project, "name"> & { name: string | null };
         return { ...project, name: name ?? displayName(project.path) };
       }),
   });

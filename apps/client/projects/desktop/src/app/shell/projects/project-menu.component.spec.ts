@@ -3,7 +3,6 @@ import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
 import { HlmDialogService } from "@ui/dialog";
 import { provideSpartanHlm } from "@ui/utils";
-import { FolderBrowserService } from "@core/folders/folder-browser.service";
 import { ProjectService } from "@core/projects/project.service";
 import { FolderBrowserComponent } from "./folder-browser.component";
 import { ProjectMenuComponent } from "./project-menu.component";
@@ -30,19 +29,12 @@ describe("ProjectMenuComponent", () => {
   const open = vi.fn<(path: string) => Promise<boolean>>();
   const openAll = vi.fn<() => Promise<boolean>>();
   const forget = vi.fn<(path: string) => Promise<boolean>>();
-  const browse = vi.fn<() => Promise<string | null>>();
+  const pickFolder = vi.fn<() => Promise<string | null>>();
   const load = vi.fn();
+  const loaded = signal(true);
   const openDialog = vi.fn();
-  const folderCurrent = signal({
-    path: "/srv/work",
-    parentPath: "/srv",
-    directories: [],
-    truncated: false,
-  });
-  const folderError = signal<string | null>(null);
-  const folderLoading = signal(false);
-  const navigate = vi.fn<(path?: string) => Promise<boolean>>();
-  let canBrowse = true;
+  const listFolders = vi.fn();
+  let canPickFolder = true;
 
   beforeEach(() => {
     projects.set([]);
@@ -50,16 +42,20 @@ describe("ProjectMenuComponent", () => {
     notice.set(null);
     error.set(null);
     busy.set(false);
-    canBrowse = true;
+    loaded.set(true);
+    canPickFolder = true;
     open.mockReset().mockResolvedValue(true);
     openAll.mockReset().mockResolvedValue(true);
     forget.mockReset().mockResolvedValue(true);
-    browse.mockReset().mockResolvedValue(null);
+    pickFolder.mockReset().mockResolvedValue(null);
     load.mockReset();
     openDialog.mockReset();
-    folderError.set(null);
-    folderLoading.set(false);
-    navigate.mockReset().mockResolvedValue(true);
+    listFolders.mockReset().mockResolvedValue({
+      path: "/srv/work",
+      parentPath: "/srv",
+      directories: [],
+      truncated: false,
+    });
     // jsdom lacks scrollIntoView, which the command list calls on its active item.
     Element.prototype.scrollIntoView = () => {};
     TestBed.configureTestingModule({
@@ -75,30 +71,17 @@ describe("ProjectMenuComponent", () => {
             notice,
             error,
             busy,
-            canBrowse,
+            loaded,
+            canPickFolder,
             load,
             open,
             openAll,
             forget,
-            browse,
+            pickFolder,
+            listFolders,
           }),
         },
       ],
-    });
-    TestBed.overrideComponent(FolderBrowserComponent, {
-      set: {
-        providers: [
-          {
-            provide: FolderBrowserService,
-            useValue: {
-              current: folderCurrent,
-              error: folderError,
-              loading: folderLoading,
-              navigate,
-            },
-          },
-        ],
-      },
     });
   });
 
@@ -265,7 +248,7 @@ describe("ProjectMenuComponent", () => {
   });
 
   it("opens the folder the desktop picker returned", async () => {
-    browse.mockResolvedValue("/git/picked");
+    pickFolder.mockResolvedValue("/git/picked");
     const { button, chosen } = await render();
 
     button("Open folder…")!.click();
@@ -279,13 +262,13 @@ describe("ProjectMenuComponent", () => {
 
     button("Open folder…")!.click();
 
-    await vi.waitFor(() => expect(browse).toHaveBeenCalled());
+    await vi.waitFor(() => expect(pickFolder).toHaveBeenCalled());
     expect(open).not.toHaveBeenCalled();
     expect(chosen).not.toHaveBeenCalled();
   });
 
   it("opens the server folder browser on web and selects through the project flow", async () => {
-    canBrowse = false;
+    canPickFolder = false;
     const { fixture, element, button, chosen } = await render();
 
     button("Open folder…")!.click();
@@ -302,7 +285,7 @@ describe("ProjectMenuComponent", () => {
   });
 
   it("keeps the server folder browser open when the project cannot be opened", async () => {
-    canBrowse = false;
+    canPickFolder = false;
     open.mockResolvedValue(false);
     const { fixture, element, button, chosen } = await render();
 
@@ -319,7 +302,7 @@ describe("ProjectMenuComponent", () => {
   });
 
   it("cannot cancel the browser while its selected project is still opening", async () => {
-    canBrowse = false;
+    canPickFolder = false;
     let finishOpen!: (opened: boolean) => void;
     open.mockImplementation(
       () =>
@@ -351,7 +334,7 @@ describe("ProjectMenuComponent", () => {
   });
 
   it("returns from the server folder browser without changing selection", async () => {
-    canBrowse = false;
+    canPickFolder = false;
     const { fixture, element, button } = await render();
 
     button("Open folder…")!.click();
@@ -364,7 +347,8 @@ describe("ProjectMenuComponent", () => {
   });
 
   it("offers to read the list again after it failed", async () => {
-    error.set("Could not reach the project backend.");
+    loaded.set(false);
+    error.set("Could not reach the Eitri server.");
     const { element, button } = await render();
 
     expect(element.querySelector('[role="alert"]')?.textContent).toContain("Could not reach");
@@ -373,9 +357,19 @@ describe("ProjectMenuComponent", () => {
     expect(load).toHaveBeenCalledOnce();
   });
 
+  it("offers no retry for a refused action once the list was read", async () => {
+    projects.set([eitri]);
+    error.set("“/git/gone” does not exist.");
+    const { element, button } = await render();
+
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain("does not exist");
+    expect(button("Try again")).toBeUndefined();
+  });
+
   it("holds actions while a request is still running", async () => {
     busy.set(true);
-    error.set("Could not reach the project backend.");
+    loaded.set(false);
+    error.set("Could not reach the Eitri server.");
     const { button } = await render();
 
     expect(button("Open folder…")?.disabled).toBe(true);

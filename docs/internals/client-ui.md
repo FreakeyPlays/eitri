@@ -24,7 +24,7 @@ app/
     ├── app-bar/            window controls, project switcher and panel toggles
     ├── commands/           command contract and palette
     ├── layout/             panel state, persistence and sizing calculations
-    ├── projects/           the contents of the app bar's project dropdown
+    ├── projects/           project switcher, its dropdown, folder browser and settings
     └── sidebar/            reusable sidebar item
 ```
 
@@ -67,21 +67,24 @@ services rather than choosing a platform or embedding a server origin themselves
 the projects they can return to. The backend owns that list; see
 [User data](user-data.md). A project becomes active only after the backend confirms
 it opened; choosing all projects is local. The selected project ID is stored per
-client and does not alter the server's shared project list. It exposes `canBrowse`
-for the one platform difference: the desktop shell opens a native folder picker,
-while the web client opens the server-backed folder browser. `AppComponent` calls
+client and does not alter the server's shared project list. `AppComponent` calls
 `load()` once at startup to restore the last selection.
 
-`FolderBrowserService` reads one server directory at a time through `/api/folders`.
-The picker supports home, parent and typed-path navigation and can select the
-current folder. Its one field is split at the last separator: the part ahead of it
-is the folder to list, the part after it filters that listing in the client. So
-typing only reaches the server when the user crosses a separator, and a partial
-name narrows the list instead of failing as a missing path. It keeps request
-generations local to each picker instance, so a late response cannot replace newer
-navigation state. Browsing is read-only;
-opening the selected path still goes through `ProjectService` and closes the
-dropdown only after the backend confirms the project.
+Finding a folder to open belongs to the same service, because it has no other
+purpose. `canPickFolder` names the one platform difference: desktop calls
+`pickFolder()` for the native picker, while web browses the server's folders with
+`listFolders(path?)`, a stateless read of `/api/folders` that never touches
+project state.
+
+`FolderBrowserComponent` owns its navigation: home, typed paths and the listing on
+screen. Its one field is split at the last separator: the part ahead of it is the
+folder to list, the part after it filters that listing in the client. So typing
+only reaches the server when the user crosses a separator, and a partial name
+narrows the list instead of failing as a missing path. Only the newest navigation
+may write what is shown, so a late response cannot replace it. The last listing
+stays visible while the next loads. Browsing is read-only; opening the selected
+path still goes through `ProjectService.open()` and closes the dropdown only after
+the backend confirms the project.
 
 Selecting all projects is a scope, not a screen: `allSelected()` is true and
 `active()` is null, which later widens the sidebar from one project's chats to
@@ -89,8 +92,8 @@ every project's. Forgetting the selected project widens the scope the same way
 rather than choosing a replacement.
 
 Projects are chosen in exactly one place: the dropdown on the project name in the
-app bar. `shell/projects/` holds its contents, and the app bar hosts it in a
-`brn-popover`. No second entry point in the sidebar, the start page or the command
+app bar. `ProjectSwitcherComponent` is that name and its `brn-popover`; the app bar
+only places it. No second entry point in the sidebar, the start page or the command
 palette — the name in the app bar is both the label and the control, so there is
 nothing to keep in sync.
 
