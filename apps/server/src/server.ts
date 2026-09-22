@@ -38,9 +38,12 @@ export const runServer = (options: {
         })
       : Effect.never;
 
-    yield* announce.pipe(
-      Effect.andThen(awaitShutdown),
-      Effect.ensuring(shutdown.open),
-      Effect.provide(Server),
-    );
+    yield* Effect.gen(function* () {
+      yield* projects.ready;
+      yield* announce.pipe(
+        Effect.andThen(awaitShutdown),
+        Effect.ensuring(shutdown.open),
+        Effect.provide(Server),
+      );
+    }).pipe(Effect.ensuring(Effect.orDie(projects.close)));
   });

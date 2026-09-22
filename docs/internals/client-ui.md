@@ -11,6 +11,7 @@ app/
 ├── core/
 │   ├── agents/             agent server requests
 │   ├── client/             web and Tauri runtime adapters
+│   ├── folders/            read-only navigation of server folders
 │   └── projects/           the open project and the ones to return to
 ├── pages/
 │   ├── page.ts             page definition and route mapping
@@ -64,11 +65,23 @@ services rather than choosing a platform or embedding a server origin themselves
 
 `ProjectService` holds what the user works in — one project, or all of them — and
 the projects they can return to. The backend owns that list; see
-[User data](user-data.md). Only a saved answer reaches its signals, so a refused
-switch leaves the selection alone. It exposes `canBrowse` for the one platform
-difference: the desktop shell opens a folder picker, while the browser has none and
-asks for a path instead. `AppComponent` calls `load()` once at startup to restore
-the last selection.
+[User data](user-data.md). A project becomes active only after the backend confirms
+it opened; choosing all projects is local. The selected project ID is stored per
+client and does not alter the server's shared project list. It exposes `canBrowse`
+for the one platform difference: the desktop shell opens a native folder picker,
+while the web client opens the server-backed folder browser. `AppComponent` calls
+`load()` once at startup to restore the last selection.
+
+`FolderBrowserService` reads one server directory at a time through `/api/folders`.
+The picker supports home, parent and typed-path navigation and can select the
+current folder. Its one field is split at the last separator: the part ahead of it
+is the folder to list, the part after it filters that listing in the client. So
+typing only reaches the server when the user crosses a separator, and a partial
+name narrows the list instead of failing as a missing path. It keeps request
+generations local to each picker instance, so a late response cannot replace newer
+navigation state. Browsing is read-only;
+opening the selected path still goes through `ProjectService` and closes the
+dropdown only after the backend confirms the project.
 
 Selecting all projects is a scope, not a screen: `allSelected()` is true and
 `active()` is null, which later widens the sidebar from one project's chats to
@@ -77,6 +90,14 @@ rather than choosing a replacement.
 
 Projects are chosen in exactly one place: the dropdown on the project name in the
 app bar. `shell/projects/` holds its contents, and the app bar hosts it in a
-`brn-popover`. No dialog, and no second entry point in the sidebar, the start page
-or the command palette — the name in the app bar is both the label and the control,
-so there is nothing to keep in sync.
+`brn-popover`. No second entry point in the sidebar, the start page or the command
+palette — the name in the app bar is both the label and the control, so there is
+nothing to keep in sync.
+
+Each row carries an always-visible settings button, because an action that only
+appears on hover cannot be found by anyone who is not already looking for it. It
+opens `ProjectSettingsComponent` in a dialog: the two things that are about one
+project rather than about choosing one — the name Eitri shows for it, and removing
+it from Eitri. Removal is styled as destructive and asks once, and it only ever
+drops the record: the folder and its files are never touched. Neither outcome
+emits `chosen`, so opening settings never counts as picking a project.

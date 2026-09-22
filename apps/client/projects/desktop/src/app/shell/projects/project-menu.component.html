@@ -1,5 +1,5 @@
 <hlm-command>
-  @if (projects.projects().length) {
+  @if (!browsing() && projects.projects().length) {
     <hlm-command-input placeholder="Search projects..." />
   }
 
@@ -23,9 +23,15 @@
     </div>
   }
 
-  @if (projects.projects().length) {
+  @if (browsing()) {
+    <app-folder-browser
+      [disabled]="projects.busy()"
+      (selected)="selectFolder($event)"
+      (cancelled)="browsing.set(false)"
+    />
+  } @else if (projects.projects().length) {
     <div *hlmCommandEmptyState hlmCommandEmpty class="py-4 text-xs">No project matches.</div>
-    <hlm-command-list class="mt-2">
+    <hlm-command-list class="my-2">
       @if (showAllProjects()) {
         <button
           hlmCommandItem
@@ -41,29 +47,37 @@
         <hlm-command-separator class="my-1" />
       }
 
-      @for (project of projects.projects(); track project.path) {
-        <div class="group/row relative">
+      @for (project of projects.projects(); track project.id) {
+        <div class="relative">
           <button
             hlmCommandItem
-            class="pe-8"
+            class="pe-9"
             [value]="project.name + ' ' + project.path"
             [title]="project.path"
-            [attr.aria-current]="project.path === projects.active()?.path ? 'true' : null"
+            [attr.aria-current]="project.id === projects.active()?.id ? 'true' : null"
             (selected)="choose(project.path)"
           >
             <span class="min-w-0 flex-1 truncate text-start">{{ project.name }}</span>
-            @if (project.path === projects.active()?.path) {
+            @if (project.id === projects.active()?.id) {
               <span class="text-xs text-muted-foreground">Open</span>
             }
           </button>
+          <!--
+            Sits on the row's highlight rather than beside it, inset so it never touches the edge.
+            Centered with auto margins, not a transform: the button's own press feedback owns
+            translate-y, and would drop the button by half its height on every click.
+          -->
           <button
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
             type="button"
-            class="absolute end-1 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 disabled:pointer-events-none"
-            [attr.aria-label]="'Remove ' + project.name + ' from the list'"
+            class="absolute inset-y-0 end-1 my-auto size-7 text-muted-foreground hover:bg-background hover:text-foreground"
+            [attr.aria-label]="'Settings for ' + project.name"
             [disabled]="projects.busy()"
-            (click)="forget(project.path)"
+            (click)="openSettings(project)"
           >
-            <i-x size="14" aria-hidden="true" />
+            <ng-icon name="lucideSettings" size="14" aria-hidden="true" />
           </button>
         </div>
       }
@@ -74,31 +88,18 @@
     </p>
   }
 
-  <hlm-command-separator />
+  @if (!browsing()) {
+    <hlm-command-separator />
 
-  @if (projects.canBrowse) {
     <button
       hlmBtn
       variant="ghost"
       size="sm"
       class="mt-1 w-full justify-start font-normal"
       [disabled]="projects.busy()"
-      (click)="browse()"
+      (click)="projects.canBrowse ? browse() : showBrowser()"
     >
       Open folder…
     </button>
-  } @else {
-    <form class="mt-1 flex items-center gap-1.5" (submit)="submitPath($event, path.value)">
-      <input
-        #path
-        hlmInput
-        name="path"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="/path/to/project"
-        aria-label="Project folder path on the server"
-      />
-      <button hlmBtn size="sm" type="submit" [disabled]="projects.busy()">Open</button>
-    </form>
   }
 </hlm-command>

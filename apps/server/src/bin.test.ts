@@ -107,9 +107,12 @@ if (prompt === "wait-for-shutdown") {
       body: JSON.stringify({ path: directory }),
     });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ activePath: directory, notice: null });
+    expect(await response.json()).toMatchObject({
+      openedProjectId: expect.any(String),
+      projects: expect.arrayContaining([expect.objectContaining({ path: directory })]),
+    });
     // Proof the executable resolved EITRI_DATA_DIR rather than a default location.
-    expect(await Bun.file(join(directory, "userdata", "projects.json")).exists()).toBe(true);
+    expect(await Bun.file(join(directory, "userdata", "state.sqlite")).exists()).toBe(true);
   });
 
   it("stops active CLI requests when the parent shuts down", async () => {

@@ -1,9 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output } from "@angular/core";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  output,
+  signal,
+} from "@angular/core";
+import type { Project } from "@eitri/contracts/project";
+import { NgIcon, provideIcons } from "@ng-icons/core";
+import { lucideSettings } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
 import { HlmCommandImports } from "@ui/command";
-import { HlmInput } from "@ui/input";
-import { XIcon } from "ng-animated-icons";
+import { HlmDialogService } from "@ui/dialog";
 import { ProjectService } from "@core/projects/project.service";
+import { FolderBrowserComponent } from "./folder-browser.component";
+import { ProjectSettingsComponent, type ProjectSettingsResult } from "./project-settings.component";
 
 /**
  * What the app bar's project dropdown contains: what the user can work in, and a
@@ -16,13 +27,16 @@ import { ProjectService } from "@core/projects/project.service";
 @Component({
   selector: "app-project-menu",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HlmButton, HlmCommandImports, HlmInput, XIcon],
+  imports: [FolderBrowserComponent, HlmButton, HlmCommandImports, NgIcon],
+  providers: [provideIcons({ lucideSettings })],
   templateUrl: "./project-menu.component.html",
   host: { class: "block" },
 })
 export class ProjectMenuComponent {
   readonly chosen = output<void>();
   protected readonly projects = inject(ProjectService);
+  protected readonly browsing = signal(false);
+  private readonly dialog = inject(HlmDialogService);
 
   /**
    * Working across projects is only a choice once there are several. It stays
@@ -40,9 +54,15 @@ export class ProjectMenuComponent {
     if (await this.projects.openAll()) this.chosen.emit();
   }
 
-  /** Forgets one entry without leaving the dropdown, and never touches the folder. */
-  protected forget(path: string) {
-    void this.projects.forget(path);
+  /**
+   * Naming and removal live in a dialog, so the dropdown stays a list of choices.
+   * Either outcome keeps the dropdown open: tidying up is rarely a single action.
+   */
+  protected openSettings(project: Project) {
+    this.dialog.open<ProjectSettingsResult, { project: Project }>(ProjectSettingsComponent, {
+      context: { project },
+      contentClass: "sm:max-w-md",
+    });
   }
 
   /** Desktop only: the platform names the folder, then it opens like any other. */
@@ -51,10 +71,12 @@ export class ProjectMenuComponent {
     if (picked !== null) await this.choose(picked);
   }
 
-  /** The browser has no folder picker, so a path on the backend's machine does. */
-  protected submitPath(event: Event, path: string) {
-    event.preventDefault();
-    void this.choose(path.trim());
+  protected showBrowser() {
+    this.browsing.set(true);
+  }
+
+  protected selectFolder(path: string) {
+    if (!this.projects.busy()) void this.choose(path);
   }
 
   protected retry() {

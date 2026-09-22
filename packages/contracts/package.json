@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./agent": "./src/agent.ts",
+    "./folder": "./src/folder.ts",
     "./project": "./src/project.ts"
   },
   "scripts": {

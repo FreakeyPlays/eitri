@@ -5,37 +5,65 @@ export const PROJECTS_ENDPOINT = "/api/projects";
 
 export const PROJECT_PATH_MESSAGE = "Enter the absolute path of a folder on this computer.";
 
-/**
- * A relative path would resolve against whatever directory the backend happens
- * to run in, which is the packaged app's working directory rather than anything
- * the user can see. POSIX roots, Windows drives and UNC shares all qualify.
- */
+export const PROJECT_NAME_MESSAGE =
+  "Enter a project name of up to 100 characters, or nothing to use the folder's name.";
+
+/** The longest name a project may carry, so one entry cannot crowd out the list. */
+export const PROJECT_NAME_MAX = 100;
+
 const ABSOLUTE_PATH = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const PathSchema = Schema.String.check(
   Schema.makeFilter((path) => (ABSOLUTE_PATH.test(path) ? undefined : PROJECT_PATH_MESSAGE)),
 );
 
-/**
- * What the user works in, as a JSON HTTP request body: the project rooted in one
- * directory, or every project at once when `path` is null.
- */
-export const SelectProjectRequestSchema = Schema.Struct({
-  path: Schema.NullOr(PathSchema),
-});
+const ProjectIdSchema = Schema.String.check(
+  Schema.makeFilter((id) => (UUID.test(id) ? undefined : "Expected a project ID.")),
+);
 
-export type SelectProjectRequest = typeof SelectProjectRequestSchema.Type;
+const printable = (name: string) => !/\p{Cc}/u.test(name);
+
+/**
+ * A name the user typed, already trimmed by the caller. Empty means the project
+ * has no name of its own and follows its folder. Control characters never reach
+ * storage.
+ */
+const ProjectNameSchema = Schema.String.check(
+  Schema.makeFilter((name) =>
+    name.trim() === name && name.length <= PROJECT_NAME_MAX && printable(name)
+      ? undefined
+      : PROJECT_NAME_MESSAGE,
+  ),
+);
+
+/** Opens or registers the project rooted at an absolute path. */
+export const OpenProjectRequestSchema = Schema.Struct({ path: PathSchema });
+export type OpenProjectRequest = typeof OpenProjectRequestSchema.Type;
 
 /** Drops one project from the remembered list. The directory itself is untouched. */
-export const ForgetProjectRequestSchema = Schema.Struct({ path: PathSchema });
-
+export const ForgetProjectRequestSchema = Schema.Struct({ id: ProjectIdSchema });
 export type ForgetProjectRequest = typeof ForgetProjectRequestSchema.Type;
 
 /**
- * One project the user opened before. The path is canonical and identifies the
- * project; `name` is derived from it for display, so two projects can share it.
+ * Gives a known project a name of the user's choosing, or clears it with an
+ * empty name so the project follows its folder again. The folder is untouched.
  */
+export const RenameProjectRequestSchema = Schema.Struct({
+  id: ProjectIdSchema,
+  name: ProjectNameSchema,
+});
+export type RenameProjectRequest = typeof RenameProjectRequestSchema.Type;
+
+/** Relocates a known project while preserving its identity. */
+export const UpdateProjectPathRequestSchema = Schema.Struct({
+  id: ProjectIdSchema,
+  path: PathSchema,
+});
+export type UpdateProjectPathRequest = typeof UpdateProjectPathRequestSchema.Type;
+
 const ProjectSchema = Schema.Struct({
+  id: ProjectIdSchema,
   path: Schema.String,
   name: Schema.String,
   lastOpenedAt: Schema.String,
@@ -43,18 +71,16 @@ const ProjectSchema = Schema.Struct({
 
 export type Project = typeof ProjectSchema.Type;
 
-/**
- * Every project the user can return to, most recently used first, and what they
- * selected. `activePath` is null while every project is selected at once, which
- * is also where an unavailable last project lands; `notice` then explains it.
- */
-export const ProjectsSchema = Schema.Struct({
-  projects: Schema.Array(ProjectSchema),
-  activePath: Schema.NullOr(Schema.String),
-  notice: Schema.NullOr(Schema.String),
-});
-
+/** Every remembered project, most recently opened first. Selection belongs to each client. */
+export const ProjectsSchema = Schema.Struct({ projects: Schema.Array(ProjectSchema) });
 export type Projects = typeof ProjectsSchema.Type;
+
+/** An open response identifies the project even when its canonical path already existed. */
+export const OpenedProjectSchema = Schema.Struct({
+  projects: Schema.Array(ProjectSchema),
+  openedProjectId: ProjectIdSchema,
+});
+export type OpenedProject = typeof OpenedProjectSchema.Type;
 
 /** A rejected request or unreadable storage answers with a message in this shape. */
 export const ProjectsFailureSchema = Schema.String;

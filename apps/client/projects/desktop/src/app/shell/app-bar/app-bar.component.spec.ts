@@ -93,7 +93,12 @@ describe("AppBarComponent", () => {
   });
 
   it("names what the user works in on every page", async () => {
-    const eitri = { path: "/git/eitri", name: "eitri", lastOpenedAt: "2026-09-21T10:00:00.000Z" };
+    const eitri = {
+      id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+      path: "/git/eitri",
+      name: "eitri",
+      lastOpenedAt: "2026-09-21T10:00:00.000Z",
+    };
     const { fixture, project } = await render([]);
     expect(project().textContent?.trim()).toBe("No project");
 

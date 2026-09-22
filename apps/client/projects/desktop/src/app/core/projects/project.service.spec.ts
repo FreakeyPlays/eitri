@@ -3,8 +3,20 @@ import { PROJECT_PATH_MESSAGE, PROJECTS_ENDPOINT } from "@eitri/contracts/projec
 import { ClientService } from "@core/client/client.service";
 import { ProjectService } from "./project.service";
 
-const eitri = { path: "/git/eitri", name: "eitri", lastOpenedAt: "2026-09-21T10:00:00.000Z" };
-const other = { path: "/git/other", name: "other", lastOpenedAt: "2026-09-20T10:00:00.000Z" };
+const eitri = {
+  id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+  path: "/git/eitri",
+  name: "eitri",
+  lastOpenedAt: "2026-09-21T10:00:00.000Z",
+};
+const other = {
+  id: "f03411f4-d917-49da-b10b-4e2c5cb1fb1c",
+  path: "/git/other",
+  name: "other",
+  lastOpenedAt: "2026-09-20T10:00:00.000Z",
+};
+const webSelectionKey = "eitri.project-selection:http://localhost:3000";
+const desktopSelectionKey = "eitri.project-selection:desktop-local";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -17,7 +29,7 @@ describe("ProjectService", () => {
   const selectDirectory = vi.fn<() => Promise<string | null>>();
   let serverUrl = "";
 
-  const service = (picker: (() => Promise<string | null>) | null = selectDirectory) => {
+  const service = (picker: (() => Promise<string | null>) | null = null) => {
     TestBed.configureTestingModule({
       providers: [
         {
@@ -33,54 +45,95 @@ describe("ProjectService", () => {
     serverUrl = "";
     fetchMock.mockReset();
     selectDirectory.mockReset();
+    localStorage.clear();
     vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
 
-  it("restores the project the user left off in", async () => {
-    fetchMock.mockResolvedValue(
-      json({ projects: [eitri, other], activePath: eitri.path, notice: null }),
-    );
+  it("loads the collection with all projects selected when nothing was remembered", async () => {
+    fetchMock.mockResolvedValue(json({ projects: [eitri, other] }));
+    const projects = service();
+
+    await projects.load();
+
+    expect(projects.projects()).toEqual([eitri, other]);
+    expect(projects.active()).toBeNull();
+    expect(projects.allSelected()).toBe(true);
+    expect(projects.notice()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(PROJECTS_ENDPOINT, {});
+  });
+
+  it("restores the locally selected project and counts that as opening it", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri, other] }))
+      .mockResolvedValueOnce(json({ projects: [eitri, other], openedProjectId: eitri.id }));
     const projects = service();
 
     await projects.load();
 
     expect(projects.active()).toEqual(eitri);
-    expect(projects.projects()).toEqual([eitri, other]);
-    expect(projects.notice()).toBeNull();
-    expect(projects.error()).toBeNull();
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(PROJECTS_ENDPOINT);
+    expect(fetchMock.mock.calls).toEqual([
+      [PROJECTS_ENDPOINT, {}],
+      [
+        PROJECTS_ENDPOINT,
+        expect.objectContaining({ method: "POST", body: JSON.stringify({ path: eitri.path }) }),
+      ],
+    ]);
   });
 
-  it("asks the desktop shell where the backend listens", async () => {
+  it("uses one stable desktop selection key across ephemeral backend ports", async () => {
+    localStorage.setItem(desktopSelectionKey, eitri.id);
     serverUrl = "http://127.0.0.1:54321/";
-    fetchMock.mockResolvedValue(json({ projects: [], activePath: null, notice: null }));
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json({ projects: [eitri], openedProjectId: eitri.id }));
 
-    await service().load();
+    await service(selectDirectory).load();
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:54321/api/projects");
+    expect(fetchMock.mock.calls[0][0]).toBe("http://127.0.0.1:54321/api/projects");
+    expect(fetchMock.mock.calls[1][0]).toBe("http://127.0.0.1:54321/api/projects");
+    expect(localStorage.getItem(desktopSelectionKey)).toBe(eitri.id);
+    expect(localStorage.getItem(`eitri.project-selection:${serverUrl}`)).toBeNull();
   });
 
-  it("opens nothing, and says why, when the last project moved away", async () => {
-    fetchMock.mockResolvedValue(
-      json({ projects: [eitri], activePath: null, notice: "“eitri” is no longer at /git/eitri." }),
-    );
+  it("falls back clearly when the remembered ID is no longer in the collection", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    fetchMock.mockResolvedValue(json({ projects: [other] }));
     const projects = service();
 
     await projects.load();
 
     expect(projects.active()).toBeNull();
-    expect(projects.notice()).toContain("no longer");
-    // Still offered, so moving it back is one click away.
+    expect(projects.projects()).toEqual([other]);
+    expect(projects.notice()).toContain("no longer in the list");
+    expect(localStorage.getItem(webSelectionKey)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an unavailable project listed while falling back to all projects", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json("“/git/eitri” is not a folder.", 400));
+    const projects = service();
+
+    await projects.load();
+
+    expect(projects.active()).toBeNull();
     expect(projects.projects()).toEqual([eitri]);
+    expect(projects.notice()).toBe("“/git/eitri” is not a folder. Showing all projects.");
+    expect(projects.error()).toBeNull();
+    expect(localStorage.getItem(webSelectionKey)).toBeNull();
   });
 
   it("reads once and shares that result with later callers", async () => {
-    fetchMock.mockResolvedValue(json({ projects: [], activePath: null, notice: null }));
+    fetchMock.mockResolvedValue(json({ projects: [] }));
     const projects = service();
 
     await Promise.all([projects.load(), projects.load()]);
@@ -89,54 +142,71 @@ describe("ProjectService", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("lets the user try again after a read failed", async () => {
+  it("lets the user retry after the initial read failed", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("offline"));
     const projects = service();
 
     await projects.load();
     expect(projects.error()).toContain("Could not reach the project backend");
 
-    fetchMock.mockResolvedValue(json({ projects: [eitri], activePath: eitri.path, notice: null }));
+    fetchMock.mockResolvedValue(json({ projects: [eitri] }));
     await projects.load();
 
     expect(projects.error()).toBeNull();
-    expect(projects.active()).toEqual(eitri);
+    expect(projects.projects()).toEqual([eitri]);
   });
 
-  it("switches to another project and clears the earlier failure", async () => {
-    fetchMock.mockResolvedValueOnce(
-      json({ projects: [eitri], activePath: eitri.path, notice: null }),
-    );
+  it("switches by path but tracks the opened project by returned ID", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json({ projects: [other, eitri], openedProjectId: other.id }));
     const projects = service();
     await projects.load();
 
-    fetchMock.mockResolvedValueOnce(
-      json({ projects: [other, eitri], activePath: other.path, notice: null }),
-    );
     expect(await projects.open(other.path)).toBe(true);
 
     expect(projects.active()).toEqual(other);
-    expect(projects.projects()).toEqual([other, eitri]);
-    const [endpoint, init] = fetchMock.mock.calls[1];
-    expect(endpoint).toBe(PROJECTS_ENDPOINT);
-    expect(init).toMatchObject({ method: "POST", body: JSON.stringify({ path: other.path }) });
+    expect(localStorage.getItem(webSelectionKey)).toBe(other.id);
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ path: other.path }),
+    });
   });
 
-  it("keeps the open project when a switch is refused", async () => {
-    fetchMock.mockResolvedValueOnce(
-      json({ projects: [eitri], activePath: eitri.path, notice: null }),
-    );
+  it("keeps the current selection when opening another path is refused", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json({ projects: [eitri], openedProjectId: eitri.id }))
+      .mockResolvedValueOnce(json("“/git/gone” does not exist.", 400));
     const projects = service();
     await projects.load();
 
-    fetchMock.mockResolvedValueOnce(json("“/git/gone” does not exist.", 400));
     expect(await projects.open("/git/gone")).toBe(false);
 
     expect(projects.active()).toEqual(eitri);
     expect(projects.error()).toBe("“/git/gone” does not exist.");
+    expect(localStorage.getItem(webSelectionKey)).toBe(eitri.id);
   });
 
-  it("refuses a path the backend would refuse, without asking it", async () => {
+  it("keeps the current selection when an open reply identifies an absent project", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json({ projects: [eitri], openedProjectId: eitri.id }))
+      .mockResolvedValueOnce(json({ projects: [eitri], openedProjectId: other.id }));
+    const projects = service();
+    await projects.load();
+
+    expect(await projects.open(other.path)).toBe(false);
+
+    expect(projects.active()).toEqual(eitri);
+    expect(projects.projects()).toEqual([eitri]);
+    expect(projects.error()).toBe("Unexpected response from the project backend.");
+    expect(localStorage.getItem(webSelectionKey)).toBe(eitri.id);
+  });
+
+  it("refuses a relative path without asking the backend", async () => {
     const projects = service();
 
     expect(await projects.open("relative/path")).toBe(false);
@@ -145,57 +215,89 @@ describe("ProjectService", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("selects every project at once", async () => {
-    fetchMock.mockResolvedValueOnce(
-      json({ projects: [eitri], activePath: eitri.path, notice: null }),
-    );
+  it("selects all projects locally without a server write", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json({ projects: [eitri], openedProjectId: eitri.id }));
     const projects = service();
     await projects.load();
-    expect(projects.allSelected()).toBe(false);
 
-    fetchMock.mockResolvedValueOnce(json({ projects: [eitri], activePath: null, notice: null }));
     expect(await projects.openAll()).toBe(true);
 
     expect(projects.allSelected()).toBe(true);
-    expect(projects.active()).toBeNull();
-    // Still listed, so narrowing back down stays one click away.
     expect(projects.projects()).toEqual([eitri]);
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({
-      method: "POST",
-      body: JSON.stringify({ path: null }),
-    });
+    expect(localStorage.getItem(webSelectionKey)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("forgets an entry, keeping whatever the backend says is left", async () => {
-    fetchMock.mockResolvedValueOnce(
-      json({ projects: [other, eitri], activePath: other.path, notice: null }),
-    );
+  it("does not let another tab's storage change replace the live selection", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri, other] }))
+      .mockResolvedValueOnce(json({ projects: [other, eitri], openedProjectId: other.id }));
     const projects = service();
     await projects.load();
+    await projects.open(other.path);
 
-    fetchMock.mockResolvedValueOnce(json({ projects: [eitri], activePath: null, notice: null }));
-    expect(await projects.forget(other.path)).toBe(true);
+    localStorage.setItem(webSelectionKey, eitri.id);
+    globalThis.dispatchEvent(
+      new StorageEvent("storage", { key: webSelectionKey, newValue: eitri.id }),
+    );
 
-    expect(projects.projects()).toEqual([eitri]);
+    expect(projects.active()).toEqual(other);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("forgets by ID and clears selection when the returned collection lacks it", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri, other] }))
+      .mockResolvedValueOnce(json({ projects: [other, eitri], openedProjectId: other.id }))
+      .mockResolvedValueOnce(json({ projects: [] }));
+    const projects = service();
+    await projects.load();
+    await projects.open(other.path);
+
+    expect(await projects.forget(eitri.id)).toBe(true);
+
+    expect(projects.projects()).toEqual([]);
     expect(projects.allSelected()).toBe(true);
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+    expect(localStorage.getItem(webSelectionKey)).toBeNull();
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({
       method: "DELETE",
-      body: JSON.stringify({ path: other.path }),
+      body: JSON.stringify({ id: eitri.id }),
     });
   });
 
-  it("keeps the list when forgetting is refused", async () => {
-    fetchMock.mockResolvedValueOnce(
-      json({ projects: [eitri], activePath: eitri.path, notice: null }),
-    );
+  it("keeps the collection when forgetting is refused", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json("“eitri” is not in the list.", 404));
     const projects = service();
     await projects.load();
 
-    fetchMock.mockResolvedValueOnce(json("“eitri” is not in the list.", 404));
-    expect(await projects.forget(eitri.path)).toBe(false);
+    expect(await projects.forget(eitri.id)).toBe(false);
 
     expect(projects.projects()).toEqual([eitri]);
     expect(projects.error()).toBe("“eitri” is not in the list.");
+  });
+
+  it("keeps project use working when local storage is unavailable", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage denied");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("storage denied");
+    });
+    fetchMock
+      .mockResolvedValueOnce(json({ projects: [eitri] }))
+      .mockResolvedValueOnce(json({ projects: [eitri], openedProjectId: eitri.id }));
+    const projects = service();
+
+    await projects.load();
+    expect(await projects.open(eitri.path)).toBe(true);
+
+    expect(projects.active()).toEqual(eitri);
+    expect(projects.error()).toBeNull();
   });
 
   it.each([
@@ -212,41 +314,49 @@ describe("ProjectService", () => {
     expect(projects.active()).toBeNull();
   });
 
-  it("runs one request at a time, so a late answer cannot win", async () => {
-    const answers: ((response: Response) => void)[] = [];
-    fetchMock.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+  it("keeps restore busy until local selection has been resolved", async () => {
+    localStorage.setItem(webSelectionKey, eitri.id);
+    let answerGet!: (response: Response) => void;
+    let answerOpen!: (response: Response) => void;
+    fetchMock
+      .mockImplementationOnce(() => new Promise((resolve) => (answerGet = resolve)))
+      .mockImplementationOnce(() => new Promise((resolve) => (answerOpen = resolve)));
     const projects = service();
 
-    const reading = projects.load();
+    const restoring = projects.load();
     expect(projects.busy()).toBe(true);
-    // Refused while the read is still in flight, rather than queued behind it.
-    expect(await projects.open(other.path)).toBe(false);
-    expect(answers).toHaveLength(1);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    answerGet(json({ projects: [eitri] }));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
-    answers[0](json({ projects: [eitri], activePath: eitri.path, notice: null }));
-    await reading;
+    expect(projects.busy()).toBe(true);
+    expect(await projects.open(other.path)).toBe(false);
+    expect(await projects.openAll()).toBe(false);
+    answerOpen(json({ projects: [eitri], openedProjectId: eitri.id }));
+    await restoring;
 
     expect(projects.busy()).toBe(false);
     expect(projects.active()).toEqual(eitri);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("opens what the platform picker returned", async () => {
+  it("returns what the platform picker chose", async () => {
     selectDirectory.mockResolvedValue("/git/picked");
-    const projects = service();
+    const projects = service(selectDirectory);
 
     expect(await projects.browse()).toBe("/git/picked");
     expect(projects.canBrowse).toBe(true);
   });
 
   it.each([
-    { what: "the user cancelled", picked: null },
-    { what: "there is no picker", picked: undefined },
-  ])("opens nothing when $what", async ({ picked }) => {
+    { what: "the user cancelled", picker: selectDirectory },
+    { what: "there is no picker", picker: null },
+  ])("opens nothing when $what", async ({ picker }) => {
     selectDirectory.mockResolvedValue(null);
-    const projects = service(picked === undefined ? null : selectDirectory);
+    const projects = service(picker);
 
     expect(await projects.browse()).toBeNull();
-    expect(projects.canBrowse).toBe(picked === null);
+    expect(projects.canBrowse).toBe(picker !== null);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,25 @@
 import { computed, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
+import { HlmDialogService } from "@ui/dialog";
 import { provideSpartanHlm } from "@ui/utils";
+import { FolderBrowserService } from "@core/folders/folder-browser.service";
 import { ProjectService } from "@core/projects/project.service";
+import { FolderBrowserComponent } from "./folder-browser.component";
 import { ProjectMenuComponent } from "./project-menu.component";
 
-const eitri = { path: "/git/eitri", name: "eitri", lastOpenedAt: "2026-09-21T10:00:00.000Z" };
-const other = { path: "/git/other", name: "other", lastOpenedAt: "2026-09-20T10:00:00.000Z" };
+const eitri = {
+  id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+  path: "/git/eitri",
+  name: "eitri",
+  lastOpenedAt: "2026-09-21T10:00:00.000Z",
+};
+const other = {
+  id: "f035a77d-24b4-41c5-a2dc-93b56425d53a",
+  path: "/git/other",
+  name: "other",
+  lastOpenedAt: "2026-09-20T10:00:00.000Z",
+};
 
 describe("ProjectMenuComponent", () => {
   const projects = signal<Project[]>([]);
@@ -19,6 +32,16 @@ describe("ProjectMenuComponent", () => {
   const forget = vi.fn<(path: string) => Promise<boolean>>();
   const browse = vi.fn<() => Promise<string | null>>();
   const load = vi.fn();
+  const openDialog = vi.fn();
+  const folderCurrent = signal({
+    path: "/srv/work",
+    parentPath: "/srv",
+    directories: [],
+    truncated: false,
+  });
+  const folderError = signal<string | null>(null);
+  const folderLoading = signal(false);
+  const navigate = vi.fn<(path?: string) => Promise<boolean>>();
   let canBrowse = true;
 
   beforeEach(() => {
@@ -33,11 +56,16 @@ describe("ProjectMenuComponent", () => {
     forget.mockReset().mockResolvedValue(true);
     browse.mockReset().mockResolvedValue(null);
     load.mockReset();
+    openDialog.mockReset();
+    folderError.set(null);
+    folderLoading.set(false);
+    navigate.mockReset().mockResolvedValue(true);
     // jsdom lacks scrollIntoView, which the command list calls on its active item.
     Element.prototype.scrollIntoView = () => {};
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
+        { provide: HlmDialogService, useValue: { open: openDialog } },
         {
           provide: ProjectService,
           useFactory: () => ({
@@ -57,6 +85,21 @@ describe("ProjectMenuComponent", () => {
         },
       ],
     });
+    TestBed.overrideComponent(FolderBrowserComponent, {
+      set: {
+        providers: [
+          {
+            provide: FolderBrowserService,
+            useValue: {
+              current: folderCurrent,
+              error: folderError,
+              loading: folderLoading,
+              navigate,
+            },
+          },
+        ],
+      },
+    });
   });
 
   async function render() {
@@ -75,9 +118,9 @@ describe("ProjectMenuComponent", () => {
       );
     const button = (label: string) =>
       [...element.querySelectorAll("button")].find((el) => el.textContent?.trim() === label);
-    const remove = (name: string) =>
-      element.querySelector<HTMLButtonElement>(`button[aria-label="Remove ${name} from the list"]`);
-    return { fixture, element, items, allEntry, button, remove, chosen };
+    const settings = (name: string) =>
+      element.querySelector<HTMLButtonElement>(`button[aria-label="Settings for ${name}"]`);
+    return { fixture, element, items, allEntry, button, settings, chosen };
   }
 
   it("lists what the user opened before, marking the open one", async () => {
@@ -135,16 +178,22 @@ describe("ProjectMenuComponent", () => {
     expect(open).not.toHaveBeenCalled();
   });
 
-  it("removes an entry without leaving the dropdown or touching the folder", async () => {
+  it("offers settings on every entry without waiting for a hover", async () => {
     projects.set([other, eitri]);
     active.set(other);
-    const { remove, chosen } = await render();
+    const { settings, chosen } = await render();
 
-    expect(remove("eitri")).toBeDefined();
-    remove("eitri")!.click();
+    for (const project of [eitri, other]) {
+      const entry = settings(project.name);
+      expect(entry).toBeDefined();
+      expect(entry!.className).not.toContain("opacity-0");
+    }
 
-    await vi.waitFor(() => expect(forget).toHaveBeenCalledExactlyOnceWith(eitri.path));
-    // Tidying up is rarely one action, so the dropdown stays open.
+    settings("eitri")!.click();
+
+    expect(openDialog).toHaveBeenCalledOnce();
+    expect(openDialog.mock.calls[0][1]).toMatchObject({ context: { project: eitri } });
+    // Naming and removal happen in the dialog, so the dropdown stays open.
     expect(chosen).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();
   });
@@ -235,17 +284,83 @@ describe("ProjectMenuComponent", () => {
     expect(chosen).not.toHaveBeenCalled();
   });
 
-  it("asks the browser for a path, since it cannot browse the backend's folders", async () => {
+  it("opens the server folder browser on web and selects through the project flow", async () => {
     canBrowse = false;
-    const { element } = await render();
+    const { fixture, element, button, chosen } = await render();
 
-    const field = element.querySelector<HTMLInputElement>("input[name=path]")!;
-    expect(field.getAttribute("aria-label")).toBe("Project folder path on the server");
-    // A pasted path often carries whitespace the backend would reject.
-    field.value = "  /git/typed  ";
-    element.querySelector("form")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    button("Open folder…")!.click();
+    await fixture.whenStable();
 
-    await vi.waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("/git/typed"));
+    const browser = fixture.debugElement.query(
+      (node) => node.componentInstance instanceof FolderBrowserComponent,
+    ).componentInstance as FolderBrowserComponent;
+    expect(element.textContent).toContain("Select this folder");
+    browser.selected.emit("/srv/work");
+
+    await vi.waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("/srv/work"));
+    await vi.waitFor(() => expect(chosen).toHaveBeenCalledOnce());
+  });
+
+  it("keeps the server folder browser open when the project cannot be opened", async () => {
+    canBrowse = false;
+    open.mockResolvedValue(false);
+    const { fixture, element, button, chosen } = await render();
+
+    button("Open folder…")!.click();
+    await fixture.whenStable();
+    const browser = fixture.debugElement.query(
+      (node) => node.componentInstance instanceof FolderBrowserComponent,
+    ).componentInstance as FolderBrowserComponent;
+    browser.selected.emit("/srv/missing");
+
+    await vi.waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("/srv/missing"));
+    expect(element.querySelector("app-folder-browser")).not.toBeNull();
+    expect(chosen).not.toHaveBeenCalled();
+  });
+
+  it("cannot cancel the browser while its selected project is still opening", async () => {
+    canBrowse = false;
+    let finishOpen!: (opened: boolean) => void;
+    open.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          busy.set(true);
+          finishOpen = (opened) => {
+            busy.set(false);
+            resolve(opened);
+          };
+        }),
+    );
+    const { fixture, element, button, chosen } = await render();
+
+    button("Open folder…")!.click();
+    await fixture.whenStable();
+    const browser = fixture.debugElement.query(
+      (node) => node.componentInstance instanceof FolderBrowserComponent,
+    ).componentInstance as FolderBrowserComponent;
+    browser.selected.emit("/srv/work");
+    await vi.waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("/srv/work"));
+    fixture.detectChanges();
+
+    expect(button("Cancel")!.disabled).toBe(true);
+    button("Cancel")!.click();
+    expect(element.querySelector("app-folder-browser")).not.toBeNull();
+
+    finishOpen(true);
+    await vi.waitFor(() => expect(chosen).toHaveBeenCalledOnce());
+  });
+
+  it("returns from the server folder browser without changing selection", async () => {
+    canBrowse = false;
+    const { fixture, element, button } = await render();
+
+    button("Open folder…")!.click();
+    await fixture.whenStable();
+    button("Cancel")!.click();
+    await fixture.whenStable();
+
+    expect(element.querySelector("app-folder-browser")).toBeNull();
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("offers to read the list again after it failed", async () => {

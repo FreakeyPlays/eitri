@@ -37,7 +37,12 @@ describe("NewChatComponent", () => {
   });
 
   it("names the open project and where it lives", async () => {
-    const eitri = { path: "/git/eitri", name: "eitri", lastOpenedAt: "2026-09-21T10:00:00.000Z" };
+    const eitri = {
+      id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+      path: "/git/eitri",
+      name: "eitri",
+      lastOpenedAt: "2026-09-21T10:00:00.000Z",
+    };
     active.set(eitri);
     projects.set([eitri]);
     const { element, heading } = await render();
@@ -48,7 +53,14 @@ describe("NewChatComponent", () => {
   });
 
   it("says so while working across every project", async () => {
-    projects.set([{ path: "/git/eitri", name: "eitri", lastOpenedAt: "2026-09-21T10:00:00.000Z" }]);
+    projects.set([
+      {
+        id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+        path: "/git/eitri",
+        name: "eitri",
+        lastOpenedAt: "2026-09-21T10:00:00.000Z",
+      },
+    ]);
     const { element, heading } = await render();
 
     expect(heading()).toBe("All projects");

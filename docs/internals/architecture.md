@@ -8,9 +8,9 @@ and starts one server per desktop process. The frontend connects directly over H
 ## Server direction
 
 Use Bun with Effect HTTP and Effect RPC for the server's transport layer. This keeps
-routing, typed calls, and streams in the same Effect stack. Today the server exposes a
-single JSON endpoint over HTTP. The client's agent service can call it, but no page
-does yet. The RPC and WebSocket parts are the planned next step.
+routing, typed calls, and streams in the same Effect stack. Today the server exposes
+JSON endpoints for agent requests, projects and server folder navigation over HTTP.
+The RPC and WebSocket parts remain a separate planned step.
 
 - Use `BunHttpServer` and `HttpRouter` for HTTP, and Effect RPC over WebSockets
   for agent calls and event streams.
@@ -32,8 +32,10 @@ does yet. The RPC and WebSocket parts are the planned next step.
 - **Server** (`apps/server`): validates requests, selects the installed Agent CLI,
   passes the prompt through stdin, and returns its completed output. Owns process
   execution, timeouts, and cleanup. Each request starts a fresh conversation.
-  It also owns the user's data directory: the projects they opened live in
-  `projects.json` there, so every client of one Eitri sees the same history.
+  It also owns the user's data directory: projects have stable IDs and live in
+  `state.sqlite` there, so clients share the remembered collection. Each client
+  persists its own selected project locally. Existing JSON project lists are
+  imported once without changing the original file.
   See [User data](user-data.md).
 - **Contracts** (`packages/contracts`): shared schemas, derived types, and endpoint
   constants defining what crosses the client/server boundary. Keep execution and
@@ -51,7 +53,8 @@ does yet. The RPC and WebSocket parts are the planned next step.
 ```mermaid
 flowchart TB
     UI[Angular frontend] -->|POST /api/agent| H[Bun HTTP server]
-    UI -->|GET and POST /api/projects| H
+    UI -->|Project collection and mutations /api/projects| H
+    UI -->|GET /api/folders| H
     H --> S[TypeScript agent adapter]
     H --> P[Project list in the data directory]
     S --> C[Installed Agent CLI]

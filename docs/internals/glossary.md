@@ -6,9 +6,10 @@ A software project that the user works on in Eitri, rooted in one local
 directory chosen by the user. Version control is optional.
 Use `Project` consistently for this concept.
 
-Its canonical directory path identifies it; the name shown is the folder's own
-name, so two Projects can share a name. One Project is open at a time, and the
-Projects opened before stay available to switch back to.
+Its stable ID identifies it. The canonical directory path stays unique and can
+change when the Project moves; the name shown is the folder's own name, so two
+Projects can share a name. Each client independently selects one Project or all
+Projects, and Projects opened before stay available to switch back to.
 
 ## Chat
 

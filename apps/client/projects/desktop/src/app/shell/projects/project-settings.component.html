@@ -1,0 +1,74 @@
+<hlm-dialog-header>
+  <h3 hlmDialogTitle>Project settings</h3>
+  <p hlmDialogDescription class="truncate" [title]="project.path">{{ project.path }}</p>
+</hlm-dialog-header>
+
+<label class="flex flex-col gap-1.5 text-sm">
+  <span class="font-medium">Display Name</span>
+  <input
+    #field
+    hlmInput
+    name="project-name"
+    autocomplete="off"
+    spellcheck="false"
+    [attr.maxlength]="maxLength"
+    [value]="name()"
+    [disabled]="projects.busy()"
+    (input)="name.set(field.value)"
+    (keydown.enter)="save()"
+  />
+  <span class="text-xs text-muted-foreground">
+    Leave it empty to fall back to the folder name.
+  </span>
+</label>
+
+@if (projects.error(); as error) {
+  <p class="text-xs text-destructive" role="alert">{{ error }}</p>
+}
+
+<div class="flex items-center justify-between gap-2">
+  @if (confirming()) {
+    <div class="flex flex-col gap-1.5">
+      <p class="text-xs text-muted-foreground">Are you sure you want to delete this Project?</p>
+      <div class="flex gap-1.5">
+        <button
+          hlmBtn
+          variant="destructive"
+          size="sm"
+          type="button"
+          [disabled]="projects.busy()"
+          (click)="remove()"
+        >
+          Yes, delete it!
+        </button>
+        <button
+          hlmBtn
+          variant="ghost"
+          size="sm"
+          type="button"
+          [disabled]="projects.busy()"
+          (click)="confirming.set(false)"
+        >
+          No, keep it.
+        </button>
+      </div>
+    </div>
+  } @else {
+    <button
+      hlmBtn
+      variant="destructive"
+      size="sm"
+      type="button"
+      [disabled]="projects.busy()"
+      (click)="confirming.set(true)"
+    >
+      Remove Project
+    </button>
+
+    <div class="flex gap-1.5">
+      <button hlmBtn size="sm" type="button" [disabled]="projects.busy()" (click)="save()">
+        Save
+      </button>
+    </div>
+  }
+</div>

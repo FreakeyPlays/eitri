@@ -21,6 +21,6 @@ Reusable Spartan Helm components live in `apps/client/projects/ui` and are impor
 
 ## Import conventions
 
-`@eitri/shared` and `@eitri/contracts` currently export `./agent` and `./project`, with no root export. Import the explicit subpath. Files that are not exported are implementation details.
+`@eitri/shared` and `@eitri/contracts` export `./agent`, `./project` and `./folder`, with no root export. Import the explicit subpath. Files that are not exported are implementation details.
 
 See [Architecture](architecture.md) for runtime boundaries and planned responsibilities.

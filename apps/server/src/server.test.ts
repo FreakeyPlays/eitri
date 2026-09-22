@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { basename, delimiter, join } from "node:path";
 import * as BunServices from "@effect/platform-bun/BunServices";
 import { AGENT_ENDPOINT, PROMPT_MAX_BYTES, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
-import { PROJECT_PATH_MESSAGE, PROJECTS_ENDPOINT } from "@eitri/contracts/project";
+import {
+  PROJECT_NAME_MESSAGE,
+  PROJECT_PATH_MESSAGE,
+  PROJECTS_ENDPOINT,
+} from "@eitri/contracts/project";
 import { Console, Effect, Fiber } from "effect";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { runServer } from "./server.ts";
@@ -163,18 +167,23 @@ describe("HTTP routes", () => {
   });
 
   describe("projects", () => {
-    // A function, not a constant: the port is only known once the server started.
     const projects = () => new URL(PROJECTS_ENDPOINT, url);
-    const openProject = (body: string, headers: Record<string, string> = {}) =>
+    const mutateProject = (
+      method: "POST" | "PATCH" | "DELETE",
+      body: string,
+      headers: Record<string, string> = {},
+    ) =>
       fetch(new URL(PROJECTS_ENDPOINT, url), {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json", ...headers },
         body,
       });
+    const openProject = (body: string, headers: Record<string, string> = {}) =>
+      mutateProject("POST", body, headers);
     const snapshot = () => fetch(new URL(PROJECTS_ENDPOINT, url)).then((res) => res.json());
 
     it("starts empty, then remembers what the user opened", async () => {
-      expect(await snapshot()).toEqual({ projects: [], activePath: null, notice: null });
+      expect(await snapshot()).toEqual({ projects: [] });
 
       const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-project-")));
       try {
@@ -182,31 +191,19 @@ describe("HTTP routes", () => {
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual({
           projects: [
-            { path: directory, name: basename(directory), lastOpenedAt: expect.any(String) },
+            {
+              id: expect.any(String),
+              path: directory,
+              name: basename(directory),
+              lastOpenedAt: expect.any(String),
+            },
           ],
-          activePath: directory,
-          notice: null,
+          openedProjectId: expect.any(String),
         });
-        // A restart reads the same file, so the project is still the open one.
-        expect(await snapshot()).toMatchObject({ activePath: directory });
+        expect(await snapshot()).toMatchObject({ projects: [{ path: directory }] });
       } finally {
         await rm(directory, { recursive: true, force: true });
       }
-    });
-
-    it("keeps an unavailable project listed without opening it", async () => {
-      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-gone-")));
-      await openProject(JSON.stringify({ path: directory }));
-      await rm(directory, { recursive: true, force: true });
-
-      const restored = (await snapshot()) as {
-        projects: { path: string }[];
-        activePath: string | null;
-        notice: string | null;
-      };
-      expect(restored.activePath).toBeNull();
-      expect(restored.notice).toContain(directory);
-      expect(restored.projects.map((project) => project.path)).toContain(directory);
     });
 
     it.each([
@@ -238,37 +235,97 @@ describe("HTTP routes", () => {
         headers: { Origin: "http://localhost:1420" },
       });
       expect(preflight.status).toBe(204);
-      expect(preflight.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, DELETE");
+      expect(preflight.headers.get("Access-Control-Allow-Methods")).toBe(
+        "GET, POST, PATCH, DELETE",
+      );
 
-      for (const method of ["PUT", "PATCH", "HEAD"]) {
+      for (const method of ["PUT", "HEAD"]) {
         const response = await fetch(projects(), { method });
         expect(response.status).toBe(405);
-        expect(response.headers.get("Allow")).toBe("GET, POST, DELETE");
+        expect(response.headers.get("Allow")).toBe("GET, POST, PATCH, DELETE");
       }
     });
 
-    it("selects every project at once, and forgets one on request", async () => {
-      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-all-")));
+    it("renames a project by ID, clears it, and refuses an unusable name", async () => {
+      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-named-")));
       try {
-        await openProject(JSON.stringify({ path: directory }));
-
-        const all = await openProject(JSON.stringify({ path: null }));
-        expect(all.status).toBe(200);
-        expect(await all.json()).toMatchObject({ activePath: null, notice: null });
-
-        const forgotten = await fetch(projects(), {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: directory }),
-        });
-        expect(forgotten.status).toBe(200);
-        // Other tests share this list, so only the forgotten entry must be gone.
-        const { projects: remaining } = (await forgotten.json()) as {
-          projects: { path: string }[];
+        const opened = (await (await openProject(JSON.stringify({ path: directory }))).json()) as {
+          openedProjectId: string;
         };
-        expect(remaining.map((project) => project.path)).not.toContain(directory);
+        const renamed = await mutateProject(
+          "PATCH",
+          JSON.stringify({ id: opened.openedProjectId, name: "Client portal" }),
+        );
+        expect(renamed.status).toBe(200);
+        expect(await renamed.json()).toMatchObject({
+          projects: expect.arrayContaining([
+            expect.objectContaining({
+              id: opened.openedProjectId,
+              path: directory,
+              name: "Client portal",
+            }),
+          ]),
+        });
+
+        const cleared = await mutateProject(
+          "PATCH",
+          JSON.stringify({ id: opened.openedProjectId, name: "" }),
+        );
+        expect(cleared.status).toBe(200);
+        expect(await cleared.json()).toMatchObject({
+          projects: expect.arrayContaining([
+            expect.objectContaining({
+              id: opened.openedProjectId,
+              name: basename(directory),
+            }),
+          ]),
+        });
+
+        const refused = await mutateProject(
+          "PATCH",
+          JSON.stringify({ id: opened.openedProjectId, name: "  padded  " }),
+        );
+        expect(refused.status).toBe(400);
+        expect(await refused.json()).toContain(PROJECT_NAME_MESSAGE);
       } finally {
         await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+    it("relocates and forgets a project by ID", async () => {
+      const directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-known-")));
+      const moved = await realpath(await mkdtemp(join(tmpdir(), "eitri-moved-")));
+      try {
+        const opened = (await (await openProject(JSON.stringify({ path: directory }))).json()) as {
+          openedProjectId: string;
+        };
+        const relocated = await mutateProject(
+          "PATCH",
+          JSON.stringify({ id: opened.openedProjectId, path: moved }),
+        );
+        expect(relocated.status).toBe(200);
+        expect(await relocated.json()).toMatchObject({
+          projects: expect.arrayContaining([
+            expect.objectContaining({
+              id: opened.openedProjectId,
+              path: moved,
+              name: basename(moved),
+            }),
+          ]),
+        });
+
+        const forgotten = await mutateProject(
+          "DELETE",
+          JSON.stringify({ id: opened.openedProjectId }),
+        );
+        expect(forgotten.status).toBe(200);
+        const { projects: remaining } = (await forgotten.json()) as {
+          projects: { id: string }[];
+        };
+        expect(remaining.map((project) => project.id)).not.toContain(opened.openedProjectId);
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+        await rm(moved, { recursive: true, force: true });
       }
     });
 

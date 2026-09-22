@@ -1,0 +1,80 @@
+<div class="flex items-center gap-1.5">
+  <input
+    #field
+    hlmInput
+    name="folder-path"
+    class="min-w-0 flex-1"
+    autocomplete="off"
+    spellcheck="false"
+    aria-label="Folder path on the server"
+    placeholder="~/path/to/project"
+    [disabled]="disabled()"
+    [value]="path()"
+    (input)="editPath(field.value)"
+    (keydown.enter)="openMatch()"
+  />
+</div>
+
+@if (folders.loading()) {
+  <span class="text-xs text-muted-foreground" role="status">Loading folders…</span>
+}
+
+@if (folders.error(); as error) {
+  <p class="text-xs text-destructive" role="alert">{{ error }}</p>
+}
+
+@if (folders.current(); as current) {
+  <div class="max-h-64 min-h-0 overflow-y-auto rounded-md border p-1">
+    @for (directory of directories(); track directory.path) {
+      <button
+        hlmBtn
+        variant="ghost"
+        size="sm"
+        type="button"
+        class="w-full justify-start truncate font-normal"
+        [title]="directory.path"
+        [disabled]="disabled() || folders.loading()"
+        (click)="open(directory.path)"
+      >
+        {{ directory.name }}
+      </button>
+    } @empty {
+      <p class="px-2 py-3 text-xs text-muted-foreground">
+        @if (current.directories.length) {
+          No folder here matches what you typed.
+        } @else {
+          This folder has no subfolders.
+        }
+      </p>
+    }
+  </div>
+  @if (current.truncated) {
+    <p class="text-xs text-muted-foreground" role="status">
+      More folders exist here than are shown. Type a full path to reach one of them.
+    </p>
+  }
+}
+
+<div class="flex justify-end gap-1.5">
+  <button
+    hlmBtn
+    variant="ghost"
+    size="sm"
+    type="button"
+    [disabled]="disabled()"
+    (click)="cancelled.emit()"
+  >
+    Cancel
+  </button>
+  <button
+    hlmBtn
+    size="sm"
+    type="button"
+    [disabled]="
+      disabled() || folders.loading() || folders.error() !== null || folders.current() === null
+    "
+    (click)="choose()"
+  >
+    Select this folder
+  </button>
+</div>

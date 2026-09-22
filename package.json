@@ -10,7 +10,7 @@
   "scripts": {
     "prepare": "vp config",
     "dev:web": "vp run @eitri/client#dev",
-    "dev:desktop": "vp run @eitri/client#tauri dev",
+    "dev:desktop": "bun scripts/reset-dev-data.ts && vp run @eitri/client#tauri dev",
     "dev:server": "vp run @eitri/server#dev",
     "build:web": "vp run @eitri/client#build",
     "build:desktop": "vp run @eitri/client#tauri build",

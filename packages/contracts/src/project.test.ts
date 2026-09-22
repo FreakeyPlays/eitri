@@ -2,17 +2,25 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 import {
   ForgetProjectRequestSchema,
+  OpenedProjectSchema,
+  OpenProjectRequestSchema,
+  PROJECT_NAME_MAX,
+  PROJECT_NAME_MESSAGE,
   PROJECT_PATH_MESSAGE,
   ProjectsSchema,
-  SelectProjectRequestSchema,
+  RenameProjectRequestSchema,
+  UpdateProjectPathRequestSchema,
 } from "./project.ts";
 
-describe("SelectProjectRequestSchema", () => {
-  const decodeRequest = Schema.decodeUnknownSync(SelectProjectRequestSchema);
+const project = {
+  id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+  path: "/git/eitri",
+  name: "eitri",
+  lastOpenedAt: "2026-09-21T10:00:00.000Z",
+};
 
-  it("selects every project at once with no path", () => {
-    expect(decodeRequest({ path: null })).toEqual({ path: null });
-  });
+describe("OpenProjectRequestSchema", () => {
+  const decodeRequest = Schema.decodeUnknownSync(OpenProjectRequestSchema);
 
   it.each(["/home/chris/git/eitri", "C:\\Users\\chris\\eitri", "D:/work", "\\\\build\\share"])(
     "accepts the absolute path %j",
@@ -24,54 +32,76 @@ describe("SelectProjectRequestSchema", () => {
   it.each(["", "   ", "eitri", "./eitri", "~/git/eitri"])("rejects the path %j", (path) => {
     expect(() => decodeRequest({ path })).toThrow(PROJECT_PATH_MESSAGE);
   });
-
-  it.each([42, undefined, {}])("rejects the non-path %j", (path) => {
-    expect(() => decodeRequest({ path })).toThrow();
-  });
 });
 
-describe("ForgetProjectRequestSchema", () => {
-  const decodeRequest = Schema.decodeUnknownSync(ForgetProjectRequestSchema);
+describe("RenameProjectRequestSchema", () => {
+  const decodeRename = Schema.decodeUnknownSync(RenameProjectRequestSchema);
 
-  it("names the one project to drop from the list", () => {
-    expect(decodeRequest({ path: "/git/eitri" })).toEqual({ path: "/git/eitri" });
-  });
+  // An empty name is the documented way to clear one, so it must decode.
+  it.each(["", "eitri", "Client portal", "Ünïcodé — 日本語", "a".repeat(PROJECT_NAME_MAX)])(
+    "accepts the name %j",
+    (name) => {
+      expect(decodeRename({ id: project.id, name })).toEqual({ id: project.id, name });
+    },
+  );
 
-  // Unlike selecting, there is no "all" to forget: the path is required.
-  it.each([null, undefined, "eitri"])("rejects %j", (path) => {
-    expect(() => decodeRequest({ path })).toThrow();
-  });
+  it.each(["   ", " padded", "padded ", "a".repeat(PROJECT_NAME_MAX + 1), "two\nlines"])(
+    "rejects the name %j",
+    (name) => {
+      expect(() => decodeRename({ id: project.id, name })).toThrow(PROJECT_NAME_MESSAGE);
+    },
+  );
 });
 
-describe("ProjectsSchema", () => {
-  const decodeProjects = Schema.decodeUnknownSync(ProjectsSchema);
+describe("project ID requests", () => {
+  const decodeForget = Schema.decodeUnknownSync(ForgetProjectRequestSchema);
+  const decodeUpdate = Schema.decodeUnknownSync(UpdateProjectPathRequestSchema);
 
-  it("carries the recent projects, the open one and no notice", () => {
-    const payload = {
-      projects: [{ path: "/git/eitri", name: "eitri", lastOpenedAt: "2026-09-21T10:00:00.000Z" }],
-      activePath: "/git/eitri",
-      notice: null,
-    };
-
-    expect(decodeProjects(payload)).toEqual(payload);
+  it("forgets a project by stable ID", () => {
+    expect(decodeForget({ id: project.id })).toEqual({ id: project.id });
   });
 
-  it("describes an unavailable project with no open path", () => {
-    const decoded = decodeProjects({
-      projects: [],
-      activePath: null,
-      notice: "“/git/gone” is no longer available.",
+  it("relocates a project without changing its identity", () => {
+    expect(decodeUpdate({ id: project.id, path: "/git/moved" })).toEqual({
+      id: project.id,
+      path: "/git/moved",
     });
+  });
 
-    expect(decoded.activePath).toBeNull();
-    expect(decoded.notice).toContain("no longer available");
+  it.each([null, undefined, "eitri", "/git/eitri", "00000000-0000-0000-0000-000000000000"])(
+    "rejects the invalid project ID %j",
+    (id) => {
+      expect(() => decodeForget({ id })).toThrow();
+    },
+  );
+
+  it("rejects a relative relocation path", () => {
+    expect(() => decodeUpdate({ id: project.id, path: "git/moved" })).toThrow(PROJECT_PATH_MESSAGE);
+  });
+});
+
+describe("project replies", () => {
+  const decodeProjects = Schema.decodeUnknownSync(ProjectsSchema);
+  const decodeOpened = Schema.decodeUnknownSync(OpenedProjectSchema);
+
+  it("carries the remembered collection without server selection state", () => {
+    expect(decodeProjects({ projects: [project] })).toEqual({ projects: [project] });
+  });
+
+  it("identifies the project opened by a path", () => {
+    const payload = { projects: [project], openedProjectId: project.id };
+    expect(decodeOpened(payload)).toEqual(payload);
   });
 
   it.each([
-    { projects: [], activePath: null },
-    { projects: [{ path: "/git/eitri" }], activePath: null, notice: null },
-    { projects: {}, activePath: null, notice: null },
-  ])("rejects the incomplete payload %j", (payload) => {
+    { projects: [{ path: "/git/eitri", name: "eitri", lastOpenedAt: project.lastOpenedAt }] },
+    { projects: [{ ...project, id: "/git/eitri" }] },
+    { projects: {} },
+  ])("rejects the malformed collection %j", (payload) => {
     expect(() => decodeProjects(payload)).toThrow();
+  });
+
+  it("rejects an open reply whose opened ID is missing", () => {
+    expect(() => decodeOpened({ projects: [project] })).toThrow();
   });
 });

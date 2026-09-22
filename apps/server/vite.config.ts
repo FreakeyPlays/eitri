@@ -12,7 +12,11 @@ export default mergeConfig(
       sourcemap: false,
       minify: true,
       clean: true,
-      deps: { alwaysBundle: [/.*/], onlyBundle: false },
+      deps: {
+        alwaysBundle: (id) => id !== "bun:sqlite",
+        neverBundle: ["bun:sqlite"],
+        onlyBundle: false,
+      },
       banner: { js: "#!/usr/bin/env bun\n" },
     },
   }),
