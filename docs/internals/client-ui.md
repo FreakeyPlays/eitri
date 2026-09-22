@@ -22,9 +22,9 @@ app/
     ├── shell.component.*   composes the window and resizable regions
     ├── animate-icon.directive.ts  shared by app bar and sidebar
     ├── app-bar/            window controls, project switcher and panel toggles
+    │   └── project-switcher/  project name, its dropdown, folder browser and settings
     ├── commands/           command contract and palette
     ├── layout/             panel state, persistence and sizing calculations
-    ├── projects/           project switcher, its dropdown, folder browser and settings
     └── sidebar/            reusable sidebar item
 ```
 

@@ -19,7 +19,7 @@ import {
 } from "ng-animated-icons";
 import { AnimateIconDirective } from "@shell/animate-icon.directive";
 import { LayoutService } from "@shell/layout/layout.service";
-import { ProjectSwitcherComponent } from "@shell/projects/project-switcher.component";
+import { ProjectSwitcherComponent } from "./project-switcher/project-switcher.component";
 
 /** The window's title bar: drags the window, names the open project, and toggles the page's panels. */
 @Component({
