@@ -51,7 +51,7 @@ transaction as `BEGIN IMMEDIATE`. Concurrent servers therefore cannot silently
 replace one another's project list. The connection closes with the server.
 
 Schema changes are migrations, the way T3 Code keeps its own: one file per change
-in `apps/server/src/migrations/`, named `<id>_<name>.ts`, whose default export is
+in `apps/server/src/storage/migrations/`, named `<id>_<name>.ts`, whose default export is
 the Effect that applies it. `database.ts` lists each one in a static record, so the
 compiled sidecar carries them, and Effect's `Migrator` runs the ones a database has
 not recorded in `effect_sql_migrations`, all in one transaction, before the server

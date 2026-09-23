@@ -3,8 +3,8 @@ import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
 import { HlmDialogService } from "@ui/dialog";
 import { provideSpartanHlm } from "@ui/utils";
-import { ProjectService } from "@core/projects/project.service";
-import { FolderBrowserComponent } from "./folder-browser.component";
+import { ProjectService } from "@features/projects/project.service";
+import { FolderBrowserComponent } from "../folder-browser/folder-browser.component";
 import { ProjectMenuComponent } from "./project-menu.component";
 
 const eitri = {

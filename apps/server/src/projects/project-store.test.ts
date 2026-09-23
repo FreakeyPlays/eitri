@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { Database } from "./database.ts";
-import { ProjectStore } from "./projects.ts";
+import { Database } from "../storage/database.ts";
+import { ProjectStore } from "./project-store.ts";
 
 describe("project store", () => {
   let root: string;

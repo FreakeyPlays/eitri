@@ -13,7 +13,7 @@ import { NgComponentOutlet } from "@angular/common";
 import { RouterOutlet } from "@angular/router";
 import { HlmResizableImports } from "@ui/resizable";
 import { AppBarComponent } from "./app-bar/app-bar.component";
-import { CommandPaletteComponent } from "./commands/command-palette.component";
+import { CommandPaletteComponent } from "./commands/command-palette/command-palette.component";
 import { measureLayout } from "./layout/layout";
 import { LayoutService, type Panel } from "./layout/layout.service";
 

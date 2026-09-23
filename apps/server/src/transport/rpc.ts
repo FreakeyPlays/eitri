@@ -1,9 +1,9 @@
 import { AgentError } from "@eitri/contracts/agent";
 import { EitriRpcs } from "@eitri/contracts/rpc";
 import { Effect } from "effect";
-import { askAgent } from "./agent.ts";
-import { listFolders } from "./folders.ts";
-import { ProjectStore } from "./projects.ts";
+import { askAgent } from "../agents/agent.ts";
+import { listFolders } from "../filesystem/folders.ts";
+import { ProjectStore } from "../projects/project-store.ts";
 
 /**
  * What the server does for each call in `EitriRpcs`. Payloads arrive decoded:

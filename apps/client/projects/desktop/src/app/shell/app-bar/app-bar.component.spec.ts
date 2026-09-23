@@ -1,7 +1,7 @@
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideSpartanHlm } from "@ui/utils";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 import { AppBarComponent } from "./app-bar.component";
 import { LayoutService, type Panel } from "@shell/layout/layout.service";
 

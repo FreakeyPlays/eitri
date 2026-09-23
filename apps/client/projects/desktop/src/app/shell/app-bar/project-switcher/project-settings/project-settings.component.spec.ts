@@ -3,7 +3,7 @@ import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { BrnDialogRef } from "@spartan-ng/brain/dialog";
 import { provideSpartanHlm } from "@ui/utils";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 import { ProjectSettingsComponent } from "./project-settings.component";
 
 const eitri = {

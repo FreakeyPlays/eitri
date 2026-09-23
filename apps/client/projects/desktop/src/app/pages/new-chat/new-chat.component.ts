@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 
 @Component({
   selector: "app-new-chat",

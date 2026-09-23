@@ -7,8 +7,8 @@ import {
   toOpenProjectRequest,
   toRenameProjectRequest,
 } from "@eitri/shared/project";
-import { ClientService } from "@core/client/client.service";
-import { ServerService } from "@core/server/server.service";
+import { ClientService } from "@core/platform/client.service";
+import { ServerService } from "@core/connection/server.service";
 
 interface Known {
   readonly projects: readonly Project[];

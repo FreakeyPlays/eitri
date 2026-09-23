@@ -1,7 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import type { FolderListing } from "@eitri/contracts/folder";
 import { provideSpartanHlm } from "@ui/utils";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 import { FolderBrowserComponent } from "./folder-browser.component";
 
 const listing = (path = "/srv/work"): FolderListing => ({

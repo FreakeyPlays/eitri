@@ -12,9 +12,9 @@ import { lucideSettings } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
 import { HlmCommandImports } from "@ui/command";
 import { HlmDialogService } from "@ui/dialog";
-import { ProjectService } from "@core/projects/project.service";
-import { FolderBrowserComponent } from "./folder-browser.component";
-import { ProjectSettingsComponent } from "./project-settings.component";
+import { ProjectService } from "@features/projects/project.service";
+import { FolderBrowserComponent } from "../folder-browser/folder-browser.component";
+import { ProjectSettingsComponent } from "../project-settings/project-settings.component";
 
 /**
  * What the app bar's project dropdown contains: what the user can work in, and a

@@ -1,9 +1,9 @@
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer";
 import { Console, Effect, Layer, Stdio, Stream } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
-import { Database } from "./database.ts";
-import { HttpRoutes } from "./http.ts";
-import { ProjectStore } from "./projects.ts";
+import { Database } from "./storage/database.ts";
+import { HttpRoutes } from "./transport/http.ts";
+import { ProjectStore } from "./projects/project-store.ts";
 
 /** `dataDir` has no default here; only `bin.ts` decides which data a run may touch. */
 export const runServer = (options: {

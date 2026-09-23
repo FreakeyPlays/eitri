@@ -12,7 +12,7 @@ import * as RpcClientError from "effect/unstable/rpc/RpcClientError";
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import * as RpcSerialization from "effect/unstable/rpc/RpcSerialization";
 import * as Socket from "effect/unstable/socket/Socket";
-import { ClientService } from "@core/client/client.service";
+import { ClientService } from "@core/platform/client.service";
 
 type Rpcs = RpcGroup.Rpcs<typeof EitriRpcs>;
 type Call<Tag extends string> = Rpc.ExtractTag<Rpcs, Tag>;

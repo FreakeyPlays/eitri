@@ -3,7 +3,7 @@ import { Router } from "@angular/router";
 import { HlmSidebarContent, HlmSidebarFooter, HlmSidebarHeader } from "@ui/sidebar";
 import { SettingsIcon, SquarePenIcon } from "ng-animated-icons";
 import { LayoutService } from "@shell/layout/layout.service";
-import { SidebarItemComponent } from "@shell/sidebar/sidebar-item.component";
+import { SidebarItemComponent } from "@shell/sidebar/sidebar-item/sidebar-item.component";
 
 @Component({
   selector: "app-chat-sidebar",

@@ -2,10 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/c
 import { BrnPopoverImports } from "@spartan-ng/brain/popover";
 import { HlmButton } from "@ui/button";
 import { ChevronsUpDownIcon } from "ng-animated-icons";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 import { AnimateIconDirective } from "@shell/animate-icon.directive";
 import { LayoutService } from "@shell/layout/layout.service";
-import { ProjectMenuComponent } from "./project-menu.component";
+import { ProjectMenuComponent } from "./project-menu/project-menu.component";
 
 /**
  * Names what the user works in, and drops the project menu open beneath that

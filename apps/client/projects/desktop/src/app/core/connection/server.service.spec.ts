@@ -2,7 +2,7 @@ import { TestBed } from "@angular/core/testing";
 import { ProjectsError } from "@eitri/contracts/project";
 import * as Cause from "effect/Cause";
 import * as RpcClientError from "effect/unstable/rpc/RpcClientError";
-import { ClientService } from "@core/client/client.service";
+import { ClientService } from "@core/platform/client.service";
 import { sentenceOf, ServerService, socketUrl } from "./server.service";
 
 describe("socketUrl", () => {

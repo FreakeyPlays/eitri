@@ -1,7 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
-import { routes } from "../../app.routes";
+import { routes } from "../../../app.routes";
 import { CommandPaletteComponent } from "./command-palette.component";
 import { LayoutService } from "@shell/layout/layout.service";
 

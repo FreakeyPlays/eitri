@@ -10,7 +10,7 @@ WebSocket, using Effect RPC.
 
 Every call a client makes is an Effect RPC defined once in `EitriRpcs`
 (`@eitri/contracts/rpc`): its payload, answer and expected error as Effect Schemas.
-The server implements the group in `apps/server/src/rpc.ts`; the client derives its
+The server implements the group in `apps/server/src/transport/rpc.ts`; the client derives its
 typed calls from the same group in `ServerService`. Payloads are decoded on the
 server before a handler runs, and answers are decoded on the client, so neither
 side trusts the wire. Expected failures are tagged errors (`ProjectsError`,
@@ -48,6 +48,41 @@ Plain HTTP is left for `/health`. This is how T3 Code talks to its server, too.
   with Storybook examples alongside components and configuration in `apps/client/.storybook`.
   Owns presentation and control interaction; feature state and agent calls belong
   in the client application.
+
+## Server source map
+
+```text
+apps/server/src/
+├── bin.ts                  executable: environment, arguments, exit handling
+├── server.ts               composition: database, project store, HTTP and lifetime
+├── transport/
+│   ├── http.ts             health route, WebSocket transport and origin guard
+│   └── rpc.ts              maps the shared RPC group to application operations
+├── agents/agent.ts         installed CLI execution, timeouts and cleanup
+├── projects/project-store.ts  project operations and transactional SQL
+├── filesystem/folders.ts   readable paths and directory listings
+├── storage/
+│   ├── data-dir.ts         selects installed, development or explicit data directory
+│   ├── database.ts         opens SQLite and applies migrations
+│   └── migrations/         ordered, statically imported schema changes
+└── test-utils/server.ts    real-server and RPC-client fixtures for tests
+```
+
+Start at `bin.ts`, then `server.ts` to see how a run is assembled. Follow a request
+from `transport/rpc.ts` into its owning module. Transport translates calls;
+projects, agents and filesystem implement the behavior without importing transport.
+Storage owns database lifetime and schema; project SQL stays with project operations
+so their transaction rules can be understood in one place. Tests sit beside the
+code they exercise; root server and executable tests cover the assembled system.
+
+For project state, start with `features/projects/` in the client; for its menu,
+start with `shell/app-bar/project-switcher/`. Follow the request through
+`packages/contracts/src/project.ts` and `rpc.ts` for the wire contract, and
+`projects/project-store.ts` in the server. Add a migration only when stored data
+changes. For a new RPC, declare it in contracts, implement the behavior with its
+owner, then connect it in `transport/rpc.ts`. Add runtime dependencies in
+`server.ts`. Avoid introducing parallel controller, service and repository layers
+when one module already expresses the operation clearly.
 
 ## Runtime
 

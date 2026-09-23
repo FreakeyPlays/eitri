@@ -2,7 +2,7 @@ import { computed, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
 import { provideSpartanHlm } from "@ui/utils";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 import { LayoutService } from "@shell/layout/layout.service";
 import { ProjectSwitcherComponent } from "./project-switcher.component";
 

@@ -5,7 +5,7 @@ import { delimiter, join } from "node:path";
 import { EitriRpcs } from "@eitri/contracts/rpc";
 import type { RpcGroup } from "effect/unstable/rpc";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
-import { type Connection, connect, failure, run } from "./testing.ts";
+import { type Connection, connect, failure, run } from "./test-utils/server.ts";
 
 /**
  * The executable's own concerns: the startup handshake, and every way the parent can be told to

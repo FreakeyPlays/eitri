@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import * as BunRuntime from "@effect/platform-bun/BunRuntime";
 import { Cause, Exit, Runtime } from "effect";
-import { resolveDataDir } from "./data-dir.ts";
+import { resolveDataDir } from "./storage/data-dir.ts";
 import { runServer } from "./server.ts";
 
 const port = Number(process.env["PORT"] ?? 4318);

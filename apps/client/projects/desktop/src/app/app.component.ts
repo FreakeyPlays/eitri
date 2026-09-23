@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
 import { isTauri } from "@tauri-apps/api/core";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 import { ShellComponent } from "@shell/shell.component";
 
 @Component({

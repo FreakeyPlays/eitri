@@ -11,7 +11,7 @@ import {
 import type { FolderListing } from "@eitri/contracts/folder";
 import { HlmButton } from "@ui/button";
 import { HlmInput } from "@ui/input";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 
 const separatorIndex = (value: string) => Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\"));
 

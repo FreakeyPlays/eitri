@@ -3,7 +3,7 @@ import { basename } from "node:path";
 import { type OpenedProject, ProjectsError, type Projects } from "@eitri/contracts/project";
 import { Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/unstable/sql";
-import { folderProblem, readableFolder } from "./folders.ts";
+import { folderProblem, readableFolder } from "../filesystem/folders.ts";
 
 const displayName = (path: string) => basename(path) || path;
 

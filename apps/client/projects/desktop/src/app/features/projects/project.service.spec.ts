@@ -1,7 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { PROJECT_PATH_MESSAGE } from "@eitri/contracts/project";
-import { ClientService } from "@core/client/client.service";
-import { ServerService } from "@core/server/server.service";
+import { ClientService } from "@core/platform/client.service";
+import { ServerService } from "@core/connection/server.service";
 import { ProjectService } from "./project.service";
 
 const eitri = {

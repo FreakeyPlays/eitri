@@ -64,7 +64,7 @@ export const listFolders = (
 
       const entries = await readdir(path, { withFileTypes: true });
       const candidates = entries.filter(
-        (entry) => !entry.name.startsWith(".") && (entry.isDirectory() || entry.isSymbolicLink()),
+        (entry) => !entry.name.startsWith("..") && (entry.isDirectory() || entry.isSymbolicLink()),
       );
       const children: Array<FolderEntry | null> = Array.from(
         { length: candidates.length },

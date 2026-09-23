@@ -1,6 +1,6 @@
 import { inject, Service } from "@angular/core";
 import type { AgentRequest } from "@eitri/contracts/agent";
-import { ServerService } from "@core/server/server.service";
+import { ServerService } from "@core/connection/server.service";
 
 @Service()
 export class AgentService {

@@ -1,5 +1,5 @@
 import { TestBed } from "@angular/core/testing";
-import { ServerService } from "@core/server/server.service";
+import { ServerService } from "@core/connection/server.service";
 import { AgentService } from "./agent.service";
 
 describe("AgentService", () => {

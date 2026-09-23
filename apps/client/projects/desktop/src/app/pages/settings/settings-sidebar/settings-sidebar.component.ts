@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { HlmSidebarContent, HlmSidebarHeader } from "@ui/sidebar";
 import { ArrowLeftIcon, SlidersHorizontalIcon } from "ng-animated-icons";
-import { SidebarItemComponent } from "@shell/sidebar/sidebar-item.component";
+import { SidebarItemComponent } from "@shell/sidebar/sidebar-item/sidebar-item.component";
 
 @Component({
   selector: "app-settings-sidebar",

@@ -58,7 +58,7 @@ unknown or newer storage.
 ## Revision — 2026-09-23
 
 Storage moved to Effect SQL (`@effect/sql-sqlite-bun`) and its `Migrator`, modeled
-on T3 Code: one migration file each in `apps/server/src/migrations/`, statically
+on T3 Code: one migration file each in `apps/server/src/storage/migrations/`, statically
 listed in `database.ts`, recorded in `effect_sql_migrations`. The hand-written
 `user_version` check, strict column validation and refusal of unversioned tables
 are gone; they turned every schema edit during development into a startup error,

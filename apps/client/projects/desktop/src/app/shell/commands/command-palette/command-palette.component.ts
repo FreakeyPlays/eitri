@@ -10,8 +10,8 @@ import {
 import { BrnDialogState } from "@spartan-ng/brain/dialog";
 import { HlmCommandImports } from "@ui/command";
 import { HlmDialogImports } from "@ui/dialog";
-import { appCommands } from "../../app.commands";
-import type { Command } from "./command";
+import { appCommands } from "../../../app.commands";
+import type { Command } from "../command";
 import { LayoutService } from "@shell/layout/layout.service";
 
 /** Opens with ⌘K or Ctrl+K and lists the app commands, then the open page's commands. */

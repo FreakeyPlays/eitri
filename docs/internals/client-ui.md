@@ -4,36 +4,58 @@ The web and desktop UI lives in `apps/client/projects/desktop/src/app`.
 
 ```text
 app/
-├── app.component.ts        mounts the shell
-├── app.config.ts           application providers
-├── app.routes.ts           page registration
-├── app.commands.ts         commands available across pages
-├── core/
-│   ├── agents/             agent server requests
-│   ├── client/             web and Tauri runtime adapters
-│   ├── folders/            read-only navigation of server folders
-│   └── projects/           the open project and the ones to return to
+├── app.*                   startup, providers, routes and application commands
+├── core/                   technical infrastructure, independent of features and UI
+│   ├── platform/           web and Tauri capabilities, runtime server address
+│   └── connection/         shared RPC connection and transport errors
+├── features/
+│   ├── agents/             sending prompts through the server
+│   └── projects/           project collection and current selection
 ├── pages/
-│   ├── page.ts             page definition and route mapping
-│   ├── new-chat/           chat page, sidebar and placeholder panels
-│   ├── settings/           settings page and sidebar
-│   └── features/           shared features across pages
+│   ├── page.ts             page declaration and route helpers
+│   ├── new-chat/           start screen and its panels
+│   └── settings/           settings screen and its sidebar
 └── shell/
-    ├── shell.component.*   composes the window and resizable regions
-    ├── animate-icon.directive.ts  shared by app bar and sidebar
-    ├── app-bar/            window controls, project switcher and panel toggles
-    │   └── project-switcher/  project name, its dropdown, folder browser and settings
+    ├── shell.component.*   window and resizable regions
+    ├── animate-icon.directive.ts
+    ├── app-bar/            window controls and panel toggles
+    │   └── project-switcher/
+    │       ├── project-switcher.component.*
+    │       ├── project-menu/
+    │       ├── folder-browser/
+    │       └── project-settings/
     ├── commands/           command contract and palette
     ├── layout/             panel state, persistence and sizing calculations
     └── sidebar/            reusable sidebar item
 ```
 
-The folders follow ownership: `pages/` owns each screen, `shell/` owns the window
-around it, and `core/` owns runtime communication and platform adapters. Root
-`app.*` files wire these pieces together. Keep templates and tests beside their
-implementation. Page-specific UI stays with its page; shared visual primitives
-live in `apps/client/projects/ui`. Keep code with its owner until actual reuse
-justifies sharing it; there is no need for an additional `features/` layer today.
+Organize UI by the screen or shell element that owns it. `pages/` owns routed
+screens and their panels; `shell/` owns the surrounding window. The project
+switcher and its dialogs live inside the app bar because that is their only home.
+Page-specific UI and behavior stay with their page.
+
+`features/` holds application capabilities and state used independently of a
+particular screen. For example, `ProjectService` serves startup, the new-chat
+page and the project switcher. It owns the collection and selection, while the
+switcher owns how the user operates the menu. `core/platform/` isolates web and
+Tauri capabilities; `core/connection/` owns RPC transport. Root `app.*` files assemble these
+pieces. Shared visual primitives live in `apps/client/projects/ui`.
+
+Each application component has its own folder, containing its implementation,
+template and test. A page or shell component can use its existing owning folder;
+additional components get named subfolders, such as `new-chat/chat-sidebar/` and
+`project-switcher/project-menu/`. The root `AppComponent` remains beside `app.*`.
+
+Use `@features/`, `@core/`, `@pages/` and `@shell/` for imports across these
+folders and relative imports within an owning folder. Import the owning file
+directly. A page can use shared state without another page importing its internals;
+shared state and transport should not depend on pages or shell UI.
+
+For example, a composer used only on the chat page belongs to that page. A search
+field used only in the project menu belongs to the switcher. Move state or controls
+to a shared home when another owner needs them; do not pre-create folders for
+future workflows or documents. These placement rules are conventions; existing
+dependency checks do not enforce every frontend ownership rule.
 
 ## Pages and panels
 

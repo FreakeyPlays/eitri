@@ -4,7 +4,7 @@ import { BrnDialogRef, injectBrnDialogContext } from "@spartan-ng/brain/dialog";
 import { HlmButton } from "@ui/button";
 import { HlmDialogDescription, HlmDialogHeader, HlmDialogTitle } from "@ui/dialog";
 import { HlmInput } from "@ui/input";
-import { ProjectService } from "@core/projects/project.service";
+import { ProjectService } from "@features/projects/project.service";
 
 /**
  * Settings for one project: the name Eitri shows for it, and removing it from

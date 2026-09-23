@@ -8,7 +8,7 @@ import { EitriRpcs } from "@eitri/contracts/rpc";
 import { Cause, Effect, Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
-import { type Connection, connect, failure, run, socketUrl, start } from "./testing.ts";
+import { type Connection, connect, failure, run, socketUrl, start } from "./test-utils/server.ts";
 
 /** Installs deterministic stand-ins for the agent CLIs; tests never invoke a real agent. */
 const installAgents = async () => {
