@@ -42,7 +42,7 @@ Varlock and its Bitwarden plugin are installed, but the current package scripts 
 
 ## Tests and Stryker
 
-Use the owning workspace's test task: the server uses Bun tests, while the client and packages use Vitest. The client's `unit` project in [vite.config.ts](../../apps/client/vite.config.ts) compiles Angular through Analog's plugin; its `storybook` project holds the visual tests. Choose tests that exercise the changed behavior.
+Use the owning workspace's test task: the server uses Vitest running under Bun, while the client and packages also use Vitest. The client's `unit` project in [vite.config.ts](../../apps/client/vite.config.ts) compiles Angular through Analog's plugin; its `storybook` project holds the visual tests. Choose tests that exercise the changed behavior.
 
 Stryker checks whether tests detect deliberate code changes. Run `vp run test:mutation` when assessing test strength or when the full validation workflow requires it. [stryker.config.json](../../stryker.config.json) mutates client, server, and package runtime source in one run. Its command runner invokes `vp run test`, preserving the server's Bun runtime and the client's Angular setup. Every mutant reruns the full workspace unit suite; per-test coverage selection is unavailable with the command runner. Visual tests are excluded. The mutation score and threshold apply to the combined codebase. CI runs it on a weekly schedule rather than on pull requests. The HTML report is written to `reports/mutation/index.html`.
 

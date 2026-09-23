@@ -2,8 +2,9 @@
 
 What one user collected across every project lives in a data directory the
 backend owns. It holds the projects they opened, and later whatever else spans
-projects. The client never reads it directly, so the web and desktop clients of
-one Eitri always agree, and the list survives a restart.
+projects. The client never reads it directly. Clients connected to the same data share
+the durable collection, and the list survives a restart. Each client holds a
+snapshot; live updates between clients are not implemented.
 
 ```text
 ~/.eitri/userdata/
@@ -18,8 +19,8 @@ there, because it has to be readable before any project is open.
 
 ## Which directory a run uses
 
-`runServer` and the project store require the directory; they have no default of
-their own. Only `bin.ts` decides, so no library call can quietly reach real data:
+`runServer` requires an explicit data directory and supplies the database to the
+project store. Only `bin.ts`, through `storage/data-dir.ts`, chooses a default:
 
 | Start                                               | Directory                      |
 | --------------------------------------------------- | ------------------------------ |
@@ -44,13 +45,13 @@ the name it already carries.
 Which project a window shows is not stored anywhere: every client starts on all
 projects.
 
-`database.ts` opens the file through Effect SQL's Bun client, which serializes
+`apps/server/src/storage/database.ts` opens the file through Effect SQL's Bun client, which serializes
 access, waits up to five seconds for a busy database, uses WAL (so
 `state.sqlite-wal` and `state.sqlite-shm` sit beside it) and runs every explicit
 transaction as `BEGIN IMMEDIATE`. Concurrent servers therefore cannot silently
 replace one another's project list. The connection closes with the server.
 
-Schema changes are migrations, the way T3 Code keeps its own: one file per change
+Schema changes are migrations: one file per change
 in `apps/server/src/storage/migrations/`, named `<id>_<name>.ts`, whose default export is
 the Effect that applies it. `database.ts` lists each one in a static record, so the
 compiled sidecar carries them, and Effect's `Migrator` runs the ones a database has
@@ -61,6 +62,11 @@ To change the schema, add the next file (say `002_project_icons.ts`) and list it
 `database.ts`. Never edit a migration that shipped: databases that already ran it
 would not see the edit. The first migration uses `IF NOT EXISTS`, so databases from
 before migrations were tracked are adopted as they are.
+
+There is no legacy `projects.json` import. The JSON formats existed only during
+development on this branch, not in a released version with project storage.
+Opening a fresh database starts an empty collection. Project relocation is not
+implemented; renaming changes only the displayed name, not the stored path.
 
 Rules the store keeps:
 
