@@ -2,6 +2,11 @@
 
 The web and desktop UI lives in `apps/client/projects/desktop/src/app`.
 
+The frontend is organized around pages and their UI owners, with shared
+application state kept separately. It is one Angular application, not a library
+per feature. The server has its own responsibility-based structure; see
+[Architecture](architecture.md#server-source-map).
+
 ```text
 app/
 ├── app.*                   startup, providers, routes and application commands
@@ -13,8 +18,11 @@ app/
 │   └── projects/           project collection and current selection
 ├── pages/
 │   ├── page.ts             page declaration and route helpers
-│   ├── new-chat/           start screen and its panels
-│   └── settings/           settings screen and its sidebar
+│   ├── new-chat/           page declaration and main component
+│   │   ├── chat-sidebar/
+│   │   └── empty-panel/
+│   └── settings/           page declaration and main component
+│       └── settings-sidebar/
 └── shell/
     ├── shell.component.*   window and resizable regions
     ├── animate-icon.directive.ts
@@ -24,9 +32,11 @@ app/
     │       ├── project-menu/
     │       ├── folder-browser/
     │       └── project-settings/
-    ├── commands/           command contract and palette
+    ├── commands/           command contract
+    │   └── command-palette/
     ├── layout/             panel state, persistence and sizing calculations
-    └── sidebar/            reusable sidebar item
+    └── sidebar/
+        └── sidebar-item/
 ```
 
 Organize UI by the screen or shell element that owns it. `pages/` owns routed
@@ -38,11 +48,15 @@ Page-specific UI and behavior stay with their page.
 particular screen. For example, `ProjectService` serves startup, the new-chat
 page and the project switcher. It owns the collection and selection, while the
 switcher owns how the user operates the menu. `core/platform/` isolates web and
-Tauri capabilities; `core/connection/` owns RPC transport. Root `app.*` files assemble these
-pieces. Shared visual primitives live in `apps/client/projects/ui`.
+Tauri capabilities; `core/connection/` owns RPC transport. `core/` must not depend
+on application features, pages or shell UI. Being used throughout the application
+does not make state infrastructure: the project collection still belongs in
+`features/projects/`. Root `app.*` files assemble these pieces. Shared visual
+primitives live in `apps/client/projects/ui`.
 
 Each application component has its own folder, containing its implementation,
-template and test. A page or shell component can use its existing owning folder;
+template and test; very small templates may remain inline. A page or shell
+component can use its existing owning folder;
 additional components get named subfolders, such as `new-chat/chat-sidebar/` and
 `project-switcher/project-menu/`. The root `AppComponent` remains beside `app.*`.
 
@@ -59,9 +73,22 @@ dependency checks do not enforce every frontend ownership rule.
 
 ## Pages and panels
 
-A `*.page.ts` declaration names the main and sidebar components, optional right
-and bottom components, and page-specific commands. Register it in
-`app.routes.ts` with `pageRoute(...)`.
+A `*.page.ts` file exports an Eitri-specific configuration object, not an Angular
+component. Its `Page` type lives in `pages/page.ts` and names the route path, main
+and sidebar components, optional right and bottom components, and page-specific
+commands. The actual Angular component remains in `*.component.ts` with its
+template and test.
+
+For example, `new-chat/new-chat.page.ts` connects `NewChatComponent` to
+`ChatSidebarComponent` and the empty panels. `settings/settings.page.ts` supplies
+the settings view and sidebar without right or bottom panels.
+
+Register the declaration in `app.routes.ts` with `pageRoute(...)`. That helper
+uses `main` as the route component and stores the declaration in route data;
+`activePage()` reads it for the shell. This small configuration keeps each page's
+panel choices together. It is our layout convention, not an Angular requirement
+or a separate router. We have not replaced it with nested layout routes or named
+router outlets.
 
 The router renders the main component. The shell renders the other regions.
 `LayoutService` follows the active page and remembers panel sizes and visibility.
