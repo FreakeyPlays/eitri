@@ -19,8 +19,9 @@ import {
 } from "ng-animated-icons";
 import { AnimateIconDirective } from "@shell/animate-icon.directive";
 import { LayoutService } from "@shell/layout/layout.service";
+import { ProjectSwitcherComponent } from "./project-switcher/project-switcher.component";
 
-/** The window's title bar: drags the window and toggles the panels the page has. */
+/** The window's title bar: drags the window, names the open project, and toggles the page's panels. */
 @Component({
   selector: "app-app-bar",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,6 +29,7 @@ import { LayoutService } from "@shell/layout/layout.service";
     HlmButton,
     HlmTooltip,
     AnimateIconDirective,
+    ProjectSwitcherComponent,
     PanelLeftCloseIcon,
     PanelLeftOpenIcon,
     PanelRightCloseIcon,

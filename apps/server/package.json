@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp pack --watch --sourcemap --on-success \"bun dist/bin.mjs\"",
+    "dev": "vp pack --watch --sourcemap --on-success \"bun dist/bin.mjs --dev\"",
     "build": "vp pack",
     "typecheck": "tsc --noEmit",
     "test": "bun --bun vitest run"
   },
   "dependencies": {
     "@effect/platform-bun": "catalog:",
+    "@effect/sql-sqlite-bun": "catalog:",
     "@eitri/contracts": "workspace:*",
     "effect": "catalog:"
   },

@@ -1,4 +1,19 @@
 <div class="max-w-sm text-center">
-  <h1 class="text-lg font-medium tracking-tight">New Chat</h1>
-  <p class="mt-2 text-sm text-muted-foreground">Your next idea starts here.</p>
+  @if (projects.active(); as project) {
+    <h1 class="text-lg font-medium tracking-tight">{{ project.name }}</h1>
+    <p class="mt-2 truncate text-sm text-muted-foreground" [title]="project.path">
+      {{ project.path }}
+    </p>
+    <p class="mt-2 text-sm text-muted-foreground">Your next idea starts here.</p>
+  } @else if (projects.projects().length) {
+    <h1 class="text-lg font-medium tracking-tight">All projects</h1>
+    <p class="mt-2 text-sm text-muted-foreground">
+      Working across every project. Pick one in the title bar to narrow it down.
+    </p>
+  } @else {
+    <h1 class="text-lg font-medium tracking-tight">No project open</h1>
+    <p class="mt-2 text-sm text-muted-foreground">
+      Choose a folder to work in from the project menu in the title bar.
+    </p>
+  }
 </div>

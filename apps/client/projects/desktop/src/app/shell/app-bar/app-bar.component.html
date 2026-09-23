@@ -23,7 +23,7 @@
       <i-panel-left-open size="18" aria-hidden="true" [animate]="sidebarIcon.animate()" />
     }
   </button>
-  <span class="ml-3 px-1 text-sm font-semibold tracking-tight">Eitri</span>
+  <app-project-switcher />
   @if (layout.has("bottom") || layout.has("right")) {
     <div class="ml-auto flex items-center gap-1" role="group" aria-label="Workspace panels">
       @if (layout.has("bottom")) {

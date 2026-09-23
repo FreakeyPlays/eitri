@@ -17,13 +17,15 @@ const PromptSchema = Schema.String.check(
   ),
 );
 
-/** One prompt for one CLI run, sent as a JSON HTTP request body. */
+/** One prompt for one CLI run. */
 export const AgentRequestSchema = Schema.Struct({ agent: Agent, prompt: PromptSchema });
 
 export type AgentRequest = typeof AgentRequestSchema.Type;
 
-/** The CLI's final output. A rejected request answers with a message in the same shape. */
+/** The CLI's final output. */
 export const AgentAnswerSchema = Schema.String;
 
-/** Route served by `@eitri/server` and proxied by the Angular dev server. */
-export const AGENT_ENDPOINT = "/api/agent";
+/** Why a run failed, as one sentence the user can act on. */
+export class AgentError extends Schema.TaggedError<AgentError>()("AgentError", {
+  message: Schema.String,
+}) {}

@@ -1,22 +1,29 @@
-import { PROMPT_MAX_BYTES } from "@eitri/contracts/agent";
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer";
-import { Console, Effect, Latch, Layer, Stdio, Stream } from "effect";
+import { Console, Effect, Layer, Stdio, Stream } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
-import { HttpRoutes } from "./http.ts";
+import { Database } from "./storage/database.ts";
+import { HttpRoutes } from "./transport/http.ts";
+import { ProjectStore } from "./projects/project-store.ts";
 
-export const runServer = (options: { readonly port: number; readonly sidecar: boolean }) =>
+/** `dataDir` has no default here; only `bin.ts` decides which data a run may touch. */
+export const runServer = (options: {
+  readonly port: number;
+  readonly sidecar: boolean;
+  readonly dataDir: string;
+}) =>
   Effect.gen(function* () {
-    const shutdown = yield* Latch.make();
-    const Server = HttpRouter.serve(HttpRoutes(shutdown), {
+    const Server = HttpRouter.serve(HttpRoutes, {
       disableLogger: false,
       disableListenLog: true,
     }).pipe(
+      Layer.provide(ProjectStore.layer),
+      Layer.provide(Database(options.dataDir)),
       Layer.provideMerge(
         BunHttpServer.layer({
           hostname: "127.0.0.1",
           port: options.port,
-          idleTimeout: 130,
-          maxRequestBodySize: PROMPT_MAX_BYTES * 6 + 1024,
+          // Close open WebSockets right away: waiting for clients to leave would hold shutdown open.
+          disablePreemptiveShutdown: true,
         }),
       ),
     );
@@ -31,9 +38,6 @@ export const runServer = (options: { readonly port: number; readonly sidecar: bo
         })
       : Effect.never;
 
-    yield* announce.pipe(
-      Effect.andThen(awaitShutdown),
-      Effect.ensuring(shutdown.open),
-      Effect.provide(Server),
-    );
+    // The database is migrated while the layer builds, so a broken one fails before the announcement.
+    yield* announce.pipe(Effect.andThen(awaitShutdown), Effect.provide(Server));
   });

@@ -48,7 +48,7 @@ A more detailed glossary can be found in [docs/internals/glossary.md](docs/inter
 ## Where code lives
 
 - `apps/client`: Application shell. `apps/client/projects/desktop` contains the Angular web and desktop UI, and `apps/client/src-tauri` contains the Tauri configuration and Rust shell. `apps/client/projects/ui` holds a shared UI library with Spartan components.
-- `apps/server`: Bun + Effect HTTP server that runs the Agent CLIs; Tauri ships it as a compiled sidecar.
+- `apps/server`: Bun + Effect RPC server that runs the Agent CLIs; Tauri ships it as a compiled sidecar.
 - `packages/contracts`: Effect/Schema contracts plus small derived helpers. No heavy runtime logic.
 - `packages/shared`: shared runtime utils, subpath exports, no barrel.
 - `scripts`: release versioning and workspace cleanup.

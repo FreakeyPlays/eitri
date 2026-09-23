@@ -1,0 +1,103 @@
+<hlm-command>
+  @if (!browsing() && projects.projects().length) {
+    <hlm-command-input placeholder="Search projects..." />
+  }
+
+  @if (projects.error(); as error) {
+    <div class="flex flex-col gap-1.5 px-2 py-1.5 text-xs text-destructive" role="alert">
+      <span>{{ error }}</span>
+      @if (!projects.loaded()) {
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          class="self-start"
+          [disabled]="projects.busy()"
+          (click)="projects.load()"
+        >
+          Try again
+        </button>
+      }
+    </div>
+  }
+
+  @if (browsing()) {
+    <app-folder-browser
+      [disabled]="projects.busy()"
+      (selected)="choose($event)"
+      (cancelled)="browsing.set(false)"
+    />
+  } @else if (projects.projects().length) {
+    <div *hlmCommandEmptyState hlmCommandEmpty class="py-4 text-xs">No project matches.</div>
+    <hlm-command-list class="my-2">
+      @if (showAllProjects()) {
+        <button
+          hlmCommandItem
+          value="All projects"
+          [attr.aria-current]="projects.allSelected() ? 'true' : null"
+          (selected)="chooseAll()"
+        >
+          <span class="min-w-0 flex-1 truncate text-start">All projects</span>
+          @if (projects.allSelected()) {
+            <span class="text-xs text-muted-foreground">Open</span>
+          }
+        </button>
+        <hlm-command-separator class="my-1" />
+      }
+
+      @for (project of projects.projects(); track project.id) {
+        <div class="relative">
+          <button
+            hlmCommandItem
+            class="pe-9"
+            [value]="project.name + ' ' + project.path"
+            [title]="project.path"
+            [attr.aria-current]="project.id === projects.active()?.id ? 'true' : null"
+            (selected)="choose(project.path)"
+          >
+            <span class="min-w-0 flex-1 truncate text-start">{{ project.name }}</span>
+            @if (project.id === projects.active()?.id) {
+              <span class="text-xs text-muted-foreground">Open</span>
+            }
+          </button>
+          <!--
+            Sits on the row's highlight rather than beside it, inset so it never touches the edge.
+            Centered with auto margins, not a transform: the button's own press feedback owns
+            translate-y, and would drop the button by half its height on every click.
+          -->
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
+            type="button"
+            class="absolute inset-y-0 inset-e-1 my-auto size-7 text-muted-foreground hover:bg-background hover:text-foreground"
+            [attr.aria-label]="'Settings for ' + project.name"
+            [disabled]="projects.busy()"
+            (click)="openSettings(project)"
+          >
+            <ng-icon name="lucideSettings" size="14" aria-hidden="true" />
+          </button>
+        </div>
+      }
+    </hlm-command-list>
+  } @else if (!projects.error()) {
+    <p class="px-2 py-1.5 text-xs text-muted-foreground">
+      No projects yet. Open a folder to start working in it.
+    </p>
+  }
+
+  @if (!browsing()) {
+    <hlm-command-separator />
+
+    <button
+      hlmBtn
+      variant="ghost"
+      size="sm"
+      class="mt-1 w-full justify-start font-normal"
+      [disabled]="projects.busy()"
+      (click)="openFolder()"
+    >
+      Open folder…
+    </button>
+  }
+</hlm-command>

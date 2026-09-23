@@ -1,13 +1,15 @@
 import type { Subprocess } from "bun";
-import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { AGENT_ENDPOINT } from "@eitri/contracts/agent";
+import { EitriRpcs } from "@eitri/contracts/rpc";
+import type { RpcGroup } from "effect/unstable/rpc";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { type Connection, connect, failure, run } from "./test-utils/server.ts";
 
 /**
  * The executable's own concerns: the startup handshake, and every way the parent can be told to
- * stop. server.test.ts covers routing and CORS in process.
+ * stop. server.test.ts covers the RPC calls and origins in process.
  */
 const modes = [
   { shutdown: "signal", watch: false },
@@ -22,9 +24,12 @@ describe.each(modes)("server executable (shutdown: $shutdown, watch: $watch)", (
   let child: Subprocess<"pipe", "pipe", "pipe">;
   let directory: string;
   let url: string;
+  let connection: Connection<RpcGroup.Rpcs<typeof EitriRpcs>>;
 
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "eitri-bin-"));
+    // Canonical from the start: a temporary directory is a symlink on macOS, and
+    // the backend answers with the resolved path.
+    directory = await realpath(await mkdtemp(join(tmpdir(), "eitri-bin-")));
     // A deterministic installed CLI replacement; tests never invoke a real agent.
     await Bun.write(
       join(directory, "codex"),
@@ -46,7 +51,14 @@ if (prompt === "wait-for-shutdown") {
       ],
       {
         cwd: directory,
-        env: { ...process.env, PORT: "0", PATH: `${directory}${delimiter}${process.env["PATH"]}` },
+        env: {
+          ...process.env,
+          PORT: "0",
+          // Never the developer's own data: the executable would otherwise
+          // resolve the installed app's directory and write to it.
+          EITRI_DATA_DIR: join(directory, "userdata"),
+          PATH: `${directory}${delimiter}${process.env["PATH"]}`,
+        },
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
@@ -69,9 +81,11 @@ if (prompt === "wait-for-shutdown") {
         reader.releaseLock();
       }
     })();
+    connection = await connect(url, EitriRpcs);
   });
 
   afterAll(async () => {
+    await connection?.close();
     if (child && child.exitCode === null && child.signalCode === null) {
       child.kill("SIGTERM");
       await child.exited;
@@ -79,23 +93,24 @@ if (prompt === "wait-for-shutdown") {
     if (directory) await rm(directory, { recursive: true, force: true });
   });
 
-  it("serves the shared request and answer contract", async () => {
+  it("answers an agent request over RPC", async () => {
     const prompt = "--help\n$(literal) ä";
-    const response = await fetch(new URL(AGENT_ENDPOINT, url), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent: "codex", prompt }),
+    expect(await run(connection.client["agent.ask"]({ agent: "codex", prompt }))).toBe(prompt);
+  });
+
+  it("remembers a project in the data directory it was given", async () => {
+    expect(await run(connection.client["projects.open"]({ path: directory }))).toMatchObject({
+      openedProjectId: expect.any(String),
+      projects: expect.arrayContaining([expect.objectContaining({ path: directory })]),
     });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toBe(prompt);
+    // Proof the executable resolved EITRI_DATA_DIR rather than a default location.
+    expect(await Bun.file(join(directory, "userdata", "state.sqlite")).exists()).toBe(true);
   });
 
   it("stops active CLI requests when the parent shuts down", async () => {
-    const response = fetch(new URL(AGENT_ENDPOINT, url), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent: "codex", prompt: "wait-for-shutdown" }),
-    });
+    const answer = failure(
+      connection.client["agent.ask"]({ agent: "codex", prompt: "wait-for-shutdown" }),
+    );
     let pid = 0;
     const deadline = Date.now() + 2000;
     while (Date.now() < deadline) {
@@ -112,7 +127,8 @@ if (prompt === "wait-for-shutdown") {
       await child.stdin.write("shutdown\n");
       await child.stdin.flush();
     } else child.kill(watch ? "SIGINT" : "SIGTERM");
-    expect(await (await response).json()).toBe("Agent request cancelled.");
+    // The answer cannot arrive: the connection closes with the server.
+    expect(await answer).toMatchObject({ _tag: "RpcClientError" });
     expect(await child.exited).toBe(0);
     expect(() => process.kill(pid, 0)).toThrow();
   });

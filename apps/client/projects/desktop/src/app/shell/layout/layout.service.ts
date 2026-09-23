@@ -44,6 +44,9 @@ export class LayoutService {
   /** True for a moment after a toggle: toggles animate, while drags and restored layouts stay instant. */
   readonly animating = signal(false);
 
+  /** Whether the app bar's project menu is open; its button and the palette both set it. */
+  readonly projectMenu = signal<"open" | "closed">("closed");
+
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.animationTimer));
   }

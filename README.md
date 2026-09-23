@@ -65,6 +65,9 @@ Open **http://localhost:1420**. The frontend forwards `/api` requests to the loc
 | `scripts`            | Release versioning and workspace maintenance              |
 | `docs`               | User documentation, architecture, and development notes   |
 
+Start with the [architecture guide](docs/internals/architecture.md) for the server source map
+and request flow, and [client UI guide](docs/internals/client-ui.md) for frontend ownership.
+
 ## License
 
 Eitri is available under the [MIT License](LICENSE).

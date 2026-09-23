@@ -12,6 +12,11 @@ export const appCommands: readonly Command[] = [
   },
   {
     group: "Navigation",
+    label: "Projects",
+    run: () => inject(LayoutService).projectMenu.set("open"),
+  },
+  {
+    group: "Navigation",
     label: "Settings",
     run: () => inject(Router).navigateByUrl("/settings"),
   },

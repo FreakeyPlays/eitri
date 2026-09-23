@@ -12,6 +12,8 @@ fn get_server_url(backend: tauri::State<'_, Backend>) -> Option<String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Only the folder picker: the client asks the user where a project lives.
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
