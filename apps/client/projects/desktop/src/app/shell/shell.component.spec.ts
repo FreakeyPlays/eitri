@@ -37,6 +37,20 @@ describe("ShellComponent", () => {
     return { fixture, element, button };
   }
 
+  it.each([{ metaKey: true }, { ctrlKey: true }])(
+    "leaves platform shortcuts alone (%j)",
+    async (modifier) => {
+      const { fixture } = await render();
+      const event = new KeyboardEvent("keydown", { key: "k", cancelable: true, ...modifier });
+
+      document.dispatchEvent(event);
+      await fixture.whenStable();
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    },
+  );
+
   it("fills each region from the open page", async () => {
     const { element } = await render();
     expect(element.querySelector("#shell-sidebar app-chat-sidebar")).not.toBeNull();

@@ -1,6 +1,5 @@
 import type { Type } from "@angular/core";
 import type { Route, Router } from "@angular/router";
-import type { Command } from "@shell/commands/command";
 
 /**
  * Everything a page puts on screen. The shell renders each component in its region:
@@ -25,8 +24,6 @@ export interface Page {
   right?: Type<unknown>;
   /** Shown as the terminal. */
   bottom?: Type<unknown>;
-  /** Offered by the command palette after the app commands while this page is open. */
-  commands?: readonly Command[];
 }
 
 /** The route that opens a page; list it in `app.routes.ts`. */

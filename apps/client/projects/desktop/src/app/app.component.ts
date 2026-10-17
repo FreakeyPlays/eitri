@@ -17,7 +17,7 @@ export class AppComponent {
   protected readonly desktop = isTauri();
 
   constructor() {
-    // Restores the project the user left off in; the picker reports any problem.
+    // Selects the most recently opened project; the picker reports any problem.
     void inject(ProjectService).load();
   }
 

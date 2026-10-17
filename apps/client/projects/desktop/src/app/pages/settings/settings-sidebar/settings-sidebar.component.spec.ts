@@ -25,5 +25,11 @@ describe("SettingsSidebarComponent", () => {
     expect(
       element.querySelector('button[aria-label="General"]')!.getAttribute("aria-current"),
     ).toBe("page");
+    const icons = [...element.querySelectorAll("button ng-icon")];
+    expect(icons.map((icon) => icon.getAttribute("name"))).toEqual([
+      "lucideArrowLeft",
+      "lucideSlidersHorizontal",
+    ]);
+    expect(icons.every((icon) => icon.querySelector("svg") !== null)).toBe(true);
   });
 });

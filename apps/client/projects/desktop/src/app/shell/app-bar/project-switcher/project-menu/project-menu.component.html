@@ -1,8 +1,6 @@
-<hlm-command>
-  @if (!browsing() && projects.projects().length) {
-    <hlm-command-input placeholder="Search projects..." />
-  }
-
+<div
+  class="flex size-full flex-col overflow-hidden rounded-xl bg-popover p-1 text-popover-foreground"
+>
   @if (projects.error(); as error) {
     <div class="flex flex-col gap-1.5 px-2 py-1.5 text-xs text-destructive" role="alert">
       <span>{{ error }}</span>
@@ -28,32 +26,19 @@
       (cancelled)="browsing.set(false)"
     />
   } @else if (projects.projects().length) {
-    <div *hlmCommandEmptyState hlmCommandEmpty class="py-4 text-xs">No project matches.</div>
-    <hlm-command-list class="my-2">
-      @if (showAllProjects()) {
-        <button
-          hlmCommandItem
-          value="All projects"
-          [attr.aria-current]="projects.allSelected() ? 'true' : null"
-          (selected)="chooseAll()"
-        >
-          <span class="min-w-0 flex-1 truncate text-start">All projects</span>
-          @if (projects.allSelected()) {
-            <span class="text-xs text-muted-foreground">Open</span>
-          }
-        </button>
-        <hlm-command-separator class="my-1" />
-      }
-
+    <ul aria-label="Projects" class="no-scrollbar my-2 max-h-72 overflow-x-hidden overflow-y-auto">
       @for (project of projects.projects(); track project.id) {
-        <div class="relative">
+        <li class="relative">
           <button
-            hlmCommandItem
-            class="pe-9"
-            [value]="project.name + ' ' + project.path"
+            hlmBtn
+            variant="ghost"
+            size="sm"
+            type="button"
+            class="w-full justify-start pe-9 font-normal"
             [title]="project.path"
             [attr.aria-current]="project.id === projects.active()?.id ? 'true' : null"
-            (selected)="choose(project.path)"
+            [disabled]="projects.busy()"
+            (click)="choose(project.path)"
           >
             <span class="min-w-0 flex-1 truncate text-start">{{ project.name }}</span>
             @if (project.id === projects.active()?.id) {
@@ -77,17 +62,20 @@
           >
             <ng-icon name="lucideSettings" size="14" aria-hidden="true" />
           </button>
-        </div>
+        </li>
       }
-    </hlm-command-list>
+    </ul>
   } @else if (!projects.error()) {
-    <p class="px-2 py-1.5 text-xs text-muted-foreground">
-      No projects yet. Open a folder to start working in it.
-    </p>
+    <div class="flex flex-col items-center px-6 py-7 text-center">
+      <p class="text-sm font-medium">No projects yet</p>
+      <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+        Open a folder to start your first project.
+      </p>
+    </div>
   }
 
   @if (!browsing()) {
-    <hlm-command-separator />
+    <hr class="-mx-1 border-border" />
 
     <button
       hlmBtn
@@ -100,4 +88,4 @@
       Open folder…
     </button>
   }
-</hlm-command>
+</div>

@@ -1,6 +1,6 @@
 <div hlmSidebarHeader class="gap-1 p-1">
-  <app-sidebar-item #newChat label="New Chat" (click)="router.navigateByUrl('/')">
-    <i-square-pen class="shrink-0" size="18" aria-hidden="true" [animate]="newChat.animate()" />
+  <app-sidebar-item label="New Chat" (click)="router.navigateByUrl('/')">
+    <ng-icon name="lucideSquarePen" class="shrink-0" size="18" aria-hidden="true" />
   </app-sidebar-item>
 </div>
 <div hlmSidebarContent>
@@ -15,7 +15,7 @@
   }
 </div>
 <div hlmSidebarFooter class="gap-1 p-1">
-  <app-sidebar-item #settings label="Settings" (click)="router.navigateByUrl('/settings')">
-    <i-settings class="shrink-0" size="18" aria-hidden="true" [animate]="settings.animate()" />
+  <app-sidebar-item label="Settings" (click)="router.navigateByUrl('/settings')">
+    <ng-icon name="lucideSettings" class="shrink-0" size="18" aria-hidden="true" />
   </app-sidebar-item>
 </div>

@@ -49,5 +49,11 @@ describe("ChatSidebarComponent", () => {
     await fixture.whenStable();
     expect(element.querySelector('[aria-label="Open chats"]')).toBeNull();
     expect(element.querySelectorAll("button")).toHaveLength(2);
+    const icons = [...element.querySelectorAll("button ng-icon")];
+    expect(icons.map((icon) => icon.getAttribute("name"))).toEqual([
+      "lucideSquarePen",
+      "lucideSettings",
+    ]);
+    expect(icons.every((icon) => icon.querySelector("svg") !== null)).toBe(true);
   });
 });

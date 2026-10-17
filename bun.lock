@@ -38,7 +38,6 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "effect": "catalog:",
-        "ng-animated-icons": "^22.0.0",
         "rxjs": "catalog:angular",
         "tailwind-merge": "^3.7.0",
         "tslib": "catalog:",
@@ -1826,8 +1825,6 @@
     "natural-compare": ["natural-compare@1.4.0", "", {}, "sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw=="],
 
     "negotiator": ["negotiator@1.1.0", "", { "dependencies": { "content-type": "^2.1.0" } }, "sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg=="],
-
-    "ng-animated-icons": ["ng-animated-icons@22.0.0", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/core": ">=19.0.0" } }, "sha512-JZEIEq49FpVZkWaySwDNMiZYIJMNkKV3VcjA12wCnO2L1rK3PhIM5QwmOG1pwjxLTg53TSzqsa6usFO8CsM5eA=="],
 
     "node-addon-api": ["node-addon-api@6.1.0", "", {}, "sha512-+eawOlIgy680F0kBzPUNFhMZGtJ1YmqM6l4+Crf4IkImjYrO/mqPwRMh352g23uIaQKFItcQ64I7KMaJxHgAVA=="],
 

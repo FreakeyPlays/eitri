@@ -1,22 +1,24 @@
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
-import { provideSpartanHlm } from "@ui/utils";
 import { ProjectService } from "@features/projects/project.service";
 import { NewChatComponent } from "./new-chat.component";
 
+const eitri = {
+  id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+  path: "/git/eitri",
+  name: "eitri",
+  lastOpenedAt: "2026-09-21T10:00:00.000Z",
+};
+const guidance = "Choose a folder to work in from the project menu in the title bar.";
+
 describe("NewChatComponent", () => {
   const active = signal<Project | null>(null);
-  const projects = signal<Project[]>([]);
 
   beforeEach(() => {
     active.set(null);
-    projects.set([]);
     TestBed.configureTestingModule({
-      providers: [
-        provideSpartanHlm(),
-        { provide: ProjectService, useValue: { active, projects, busy: signal(false) } },
-      ],
+      providers: [{ provide: ProjectService, useValue: { active } }],
     });
   });
 
@@ -24,46 +26,58 @@ describe("NewChatComponent", () => {
     const fixture = TestBed.createComponent(NewChatComponent);
     await fixture.whenStable();
     const element: HTMLElement = fixture.nativeElement;
-    return { fixture, element, heading: () => element.querySelector("h1")!.textContent };
+    return {
+      fixture,
+      element,
+      heading: () => element.querySelector("h1")!,
+      body: () => element.querySelector("p")!,
+    };
   }
 
-  it("points at the title bar while no project is open", async () => {
-    const { element, heading } = await render();
+  it("shows one title and guidance when no project is selected", async () => {
+    const { element, heading, body } = await render();
 
-    expect(heading()).toBe("No project open");
-    expect(element.textContent).toContain("title bar");
+    expect(heading().textContent?.trim()).toBe("No project selected");
+    expect(body().textContent?.trim()).toBe(guidance);
+    expect(body().hasAttribute("title")).toBe(false);
+    expect(body().classList.contains("truncate")).toBe(false);
+    expect(element.querySelectorAll("h1")).toHaveLength(1);
+    expect(element.querySelectorAll("p")).toHaveLength(1);
     // No opener of its own: the app bar's dropdown is the only one.
     expect(element.querySelector("button")).toBeNull();
   });
 
-  it("names the open project and where it lives", async () => {
-    const eitri = {
-      id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
-      path: "/git/eitri",
-      name: "eitri",
-      lastOpenedAt: "2026-09-21T10:00:00.000Z",
-    };
+  it("shows only the project name and path when selected", async () => {
     active.set(eitri);
-    projects.set([eitri]);
-    const { element, heading } = await render();
+    const { element, heading, body } = await render();
 
-    expect(heading()).toBe("eitri");
-    expect(element.textContent).toContain("/git/eitri");
+    expect(heading().textContent?.trim()).toBe(eitri.name);
+    expect(body().textContent?.trim()).toBe(eitri.path);
+    expect(body().title).toBe(eitri.path);
+    expect(body().classList.contains("truncate")).toBe(true);
+    expect(element.querySelectorAll("p")).toHaveLength(1);
     expect(element.querySelector("button")).toBeNull();
   });
 
-  it("says so while working across every project", async () => {
-    projects.set([
-      {
-        id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
-        path: "/git/eitri",
-        name: "eitri",
-        lastOpenedAt: "2026-09-21T10:00:00.000Z",
-      },
-    ]);
-    const { element, heading } = await render();
+  it("updates the same title and body as the selection changes", async () => {
+    const { fixture, heading, body } = await render();
+    const title = heading();
+    const text = body();
 
-    expect(heading()).toBe("All projects");
-    expect(element.textContent).toContain("across every project");
+    active.set(eitri);
+    await fixture.whenStable();
+    expect(heading()).toBe(title);
+    expect(body()).toBe(text);
+    expect(title.textContent?.trim()).toBe(eitri.name);
+    expect(text.textContent?.trim()).toBe(eitri.path);
+
+    active.set(null);
+    await fixture.whenStable();
+    expect(heading()).toBe(title);
+    expect(body()).toBe(text);
+    expect(title.textContent?.trim()).toBe("No project selected");
+    expect(text.textContent?.trim()).toBe(guidance);
+    expect(text.hasAttribute("title")).toBe(false);
+    expect(text.classList.contains("truncate")).toBe(false);
   });
 });

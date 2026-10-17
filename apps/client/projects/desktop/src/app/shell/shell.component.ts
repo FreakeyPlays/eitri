@@ -13,24 +13,17 @@ import { NgComponentOutlet } from "@angular/common";
 import { RouterOutlet } from "@angular/router";
 import { HlmResizableImports } from "@ui/resizable";
 import { AppBarComponent } from "./app-bar/app-bar.component";
-import { CommandPaletteComponent } from "./commands/command-palette/command-palette.component";
 import { measureLayout } from "./layout/layout";
 import { LayoutService, type Panel } from "./layout/layout.service";
 
 /**
- * The window around every page: app bar, resizable panels and command palette.
+ * The window around every page: app bar and resizable panels.
  * The open page decides what fills the panels; see `pages/page.ts`.
  */
 @Component({
   selector: "app-shell",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    AppBarComponent,
-    CommandPaletteComponent,
-    HlmResizableImports,
-    NgComponentOutlet,
-    RouterOutlet,
-  ],
+  imports: [AppBarComponent, HlmResizableImports, NgComponentOutlet, RouterOutlet],
   templateUrl: "./shell.component.html",
   host: { class: "flex h-dvh min-h-0 flex-col overflow-hidden bg-muted/40 text-foreground" },
 })

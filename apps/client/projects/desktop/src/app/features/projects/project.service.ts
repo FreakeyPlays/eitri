@@ -37,7 +37,6 @@ export class ProjectService {
     const { projects, selectedId } = this.known();
     return projects.find((project) => project.id === selectedId) ?? null;
   });
-  readonly allSelected = computed(() => this.known().selectedId === null);
   readonly error = this.failure.asReadonly();
   readonly busy = this.pending.asReadonly();
   /** False until the collection was read once, so a failed first read can be retried. */
@@ -45,7 +44,7 @@ export class ProjectService {
   /** Desktop has a native folder picker; web browses the server's folders instead. */
   readonly canPickFolder = this.client.selectDirectory !== null;
 
-  /** Reads the collection once; every window starts on all projects. */
+  /** Reads the collection once and selects the most recently opened project. */
   load(): Promise<void> {
     return (this.started ??= this.request(() => this.server.call("projects.list")).then(
       (snapshot) => {
@@ -54,7 +53,10 @@ export class ProjectService {
           return;
         }
         this.listed.set(true);
-        this.known.set({ projects: snapshot.projects, selectedId: null });
+        this.known.set({
+          projects: snapshot.projects,
+          selectedId: snapshot.projects[0]?.id ?? null,
+        });
       },
     ));
   }
@@ -68,14 +70,6 @@ export class ProjectService {
     return true;
   }
 
-  /** Selecting every project is local client state and performs no server request. */
-  openAll(): boolean {
-    if (this.busy()) return false;
-    this.failure.set(null);
-    this.known.update((known) => ({ ...known, selectedId: null }));
-    return true;
-  }
-
   /** Names one project for every client. The folder on disk is never touched. */
   async rename(id: string, name: string): Promise<boolean> {
     const snapshot = await this.request(() =>
@@ -86,7 +80,7 @@ export class ProjectService {
     return true;
   }
 
-  /** Forgetting the selected project widens the scope to all projects. */
+  /** Forgetting the selected project selects the most recently opened one left. */
   async forget(id: string): Promise<boolean> {
     const snapshot = await this.request(() =>
       this.server.call("projects.forget", toForgetProjectRequest(id)),
@@ -96,7 +90,7 @@ export class ProjectService {
       projects: snapshot.projects,
       selectedId: snapshot.projects.some((project) => project.id === selectedId)
         ? selectedId
-        : null,
+        : (snapshot.projects[0]?.id ?? null),
     }));
     return true;
   }

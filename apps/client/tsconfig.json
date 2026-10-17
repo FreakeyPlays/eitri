@@ -26,7 +26,6 @@
       "@ui/sheet": ["./projects/ui/sheet/src/index.ts"],
       "@ui/skeleton": ["./projects/ui/skeleton/src/index.ts"],
       "@ui/dialog": ["./projects/ui/dialog/src/index.ts"],
-      "@ui/command": ["./projects/ui/command/src/index.ts"],
       "@ui/input-group": ["./projects/ui/input-group/src/index.ts"],
       "@ui/textarea": ["./projects/ui/textarea/src/index.ts"]
     }

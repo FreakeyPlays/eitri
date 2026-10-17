@@ -10,14 +10,14 @@ import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { HlmButton } from "@ui/button";
 import { HlmTooltip } from "@ui/tooltip";
+import { NgIcon, provideIcons } from "@ng-icons/core";
 import {
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-  PanelRightCloseIcon,
-  PanelRightOpenIcon,
-  SquareTerminalIcon,
-} from "ng-animated-icons";
-import { AnimateIconDirective } from "@shell/animate-icon.directive";
+  lucidePanelLeftClose,
+  lucidePanelLeftOpen,
+  lucidePanelRightClose,
+  lucidePanelRightOpen,
+  lucideSquareTerminal,
+} from "@ng-icons/lucide";
 import { LayoutService } from "@shell/layout/layout.service";
 import { ProjectSwitcherComponent } from "./project-switcher/project-switcher.component";
 
@@ -25,16 +25,15 @@ import { ProjectSwitcherComponent } from "./project-switcher/project-switcher.co
 @Component({
   selector: "app-app-bar",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    HlmButton,
-    HlmTooltip,
-    AnimateIconDirective,
-    ProjectSwitcherComponent,
-    PanelLeftCloseIcon,
-    PanelLeftOpenIcon,
-    PanelRightCloseIcon,
-    PanelRightOpenIcon,
-    SquareTerminalIcon,
+  imports: [HlmButton, HlmTooltip, ProjectSwitcherComponent, NgIcon],
+  providers: [
+    provideIcons({
+      lucidePanelLeftClose,
+      lucidePanelLeftOpen,
+      lucidePanelRightClose,
+      lucidePanelRightOpen,
+      lucideSquareTerminal,
+    }),
   ],
   templateUrl: "./app-bar.component.html",
   host: { class: "contents" },

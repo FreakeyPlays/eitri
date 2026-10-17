@@ -4,7 +4,7 @@ The web and desktop UI lives in `apps/client/projects/desktop/src/app`.
 
 ```text
 app/
-├── app.*                   startup, providers, routes and application commands
+├── app.*                   startup, providers and routes
 ├── core/                   technical infrastructure, independent of features and UI
 │   ├── platform/           web and Tauri capabilities, runtime server address
 │   └── connection/         shared RPC connection and transport errors
@@ -17,14 +17,12 @@ app/
 │   └── settings/           settings screen and its sidebar
 └── shell/
     ├── shell.component.*   window and resizable regions
-    ├── animate-icon.directive.ts
     ├── app-bar/            window controls and panel toggles
     │   └── project-switcher/
     │       ├── project-switcher.component.*
     │       ├── project-menu/
     │       ├── folder-browser/
     │       └── project-settings/
-    ├── commands/           command contract and palette
     ├── layout/             panel state, persistence and sizing calculations
     └── sidebar/            reusable sidebar item
 ```
@@ -51,17 +49,16 @@ folders and relative imports within an owning folder. Import the owning file
 directly. A page can use shared state without another page importing its internals;
 shared state and transport should not depend on pages or shell UI.
 
-For example, a composer used only on the chat page belongs to that page. A search
-field used only in the project menu belongs to the switcher. Move state or controls
+For example, a composer used only on the chat page belongs to that page. The folder
+browser used only by the project menu belongs to the switcher. Move state or controls
 to a shared home when another owner needs them; do not pre-create folders for
 future workflows or documents. These placement rules are conventions; existing
 dependency checks do not enforce every frontend ownership rule.
 
 ## Pages and panels
 
-A `*.page.ts` declaration names the main and sidebar components, optional right
-and bottom components, and page-specific commands. Register it in
-`app.routes.ts` with `pageRoute(...)`.
+A `*.page.ts` declaration names the main and sidebar components and optional right
+and bottom components. Register it in `app.routes.ts` with `pageRoute(...)`.
 
 The router renders the main component. The shell renders the other regions.
 `LayoutService` follows the active page and remembers panel sizes and visibility.
@@ -71,13 +68,6 @@ Sizing calculations remain separate from DOM measurement and dragging in the she
 Collapsing a panel keeps its component mounted. Navigating to a page that omits
 the panel destroys that component; returning creates it again. Saved layout
 preferences survive, but component-local state does not.
-
-## Commands
-
-Application commands live in `app.commands.ts`; page commands live in that page's
-declaration. The palette groups them and evaluates their optional `when` predicates.
-It calls `when` and `run` in an injection context, so they can use `inject()`
-synchronously. Resolve dependencies before awaiting asynchronous work.
 
 ## Runtime services
 
@@ -92,12 +82,12 @@ service knows the transport, so domain services such as `AgentService` and
 or Tauri adapter that resolves the server address at runtime. Pages use these
 services rather than choosing a platform or embedding a server origin themselves.
 
-`ProjectService` holds what the user works in — one project, or all of them — and
-the projects they can return to. The backend owns that list; see
-[User data](user-data.md). A project becomes active only after the backend confirms
-it opened; choosing all projects is local. The selection lives only in memory and
-never alters the server's shared project list. `AppComponent` calls `load()` once
-at startup to read the list.
+`ProjectService` holds the active project and the projects the user can return to.
+The backend owns that list; see [User data](user-data.md). `AppComponent` calls
+`load()` once at startup to read the list and select the most recently opened
+project. Explicitly opening a project changes the selection only after the backend
+confirms it opened. The selection lives only in memory; choosing a startup or
+replacement selection never alters the server's shared project list.
 
 Finding a folder to open belongs to the same service, because it has no other
 purpose. `canPickFolder` names the one platform difference: desktop calls
@@ -115,19 +105,19 @@ stays visible while the next loads. Browsing is read-only; opening the selected
 path still goes through `ProjectService.open()` and closes the dropdown only after
 the backend confirms the project.
 
-Selecting all projects is a scope, not a screen: `allSelected()` is true and
-`active()` is null, which later widens the sidebar from one project's chats to
-every project's. Forgetting the selected project widens the scope the same way
-rather than choosing a replacement.
+Forgetting the selected project selects the first remaining project in the
+backend's most-recently-opened order. Forgetting another project preserves the
+selection. `active()` is null only when no project is selected.
 
 Projects are chosen in one menu: the dropdown on the project name in the app bar.
 `ProjectSwitcherComponent` is that name and its `brn-popover`; the app bar only
-places it. The palette's "Projects" command opens the same dropdown by setting
-`LayoutService.projectMenu`, which the popover's state follows, so there is still
-only one list to keep in sync.
+places it. The popover owns its open state and closes after a successful selection.
+The menu uses ordinary buttons in a scrollable list, with Tab, Enter and Space
+providing standard button navigation and activation.
 
 Which project a window shows is not persisted. Every start reads the collection
-and begins on all projects; the server remembers the projects, not the selection.
+and selects its first project, or none when empty; the server remembers the
+projects and their order, not each window's selection.
 
 Each row carries an always-visible settings button, because an action that only
 appears on hover cannot be found by anyone who is not already looking for it. It

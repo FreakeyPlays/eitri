@@ -24,7 +24,6 @@ describe("AppBarComponent", () => {
             has: (panel: Panel) => panel === "sidebar" || offered().includes(panel),
             isOpen: (panel: Panel) => open().includes(panel),
             toggle,
-            projectMenu: signal("closed"),
           },
         },
       ],
@@ -49,6 +48,27 @@ describe("AppBarComponent", () => {
       "Show terminal",
       "Show right panel",
     ]);
+  });
+
+  it.each([
+    { opened: [], sidebar: "lucidePanelLeftOpen", right: "lucidePanelRightOpen" },
+    {
+      opened: ["sidebar", "right"] satisfies Panel[],
+      sidebar: "lucidePanelLeftClose",
+      right: "lucidePanelRightClose",
+    },
+  ])("renders static icons for $sidebar and $right", async ({ opened, sidebar, right }) => {
+    const { element } = await render(["bottom", "right"], opened);
+    const icons = [...element.querySelectorAll("button ng-icon")];
+
+    expect(icons.map((icon) => icon.getAttribute("name"))).toEqual([
+      sidebar,
+      "lucideChevronsUpDown",
+      "lucideSquareTerminal",
+      right,
+    ]);
+    expect(icons.every((icon) => icon.querySelector("svg") !== null)).toBe(true);
+    expect(icons.every((icon) => icon.getAttribute("aria-hidden") === "true")).toBe(true);
   });
 
   it("hides the panel group on pages without panels", async () => {

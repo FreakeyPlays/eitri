@@ -8,8 +8,8 @@ Use `Project` consistently for this concept.
 
 Its stable ID identifies it. The canonical directory path stays unique and can
 change when the Project moves; the name shown is the folder's own name, so two
-Projects can share a name. Each client independently selects one Project or all
-Projects, and Projects opened before stay available to switch back to.
+Projects can share a name. Each client independently selects one Project, and
+Projects opened before stay available to switch back to.
 
 ## Chat
 

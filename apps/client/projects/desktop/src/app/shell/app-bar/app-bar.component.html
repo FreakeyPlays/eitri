@@ -9,8 +9,6 @@
     hlmBtn
     variant="ghost"
     size="icon"
-    appAnimateIcon
-    #sidebarIcon="appAnimateIcon"
     [hlmTooltip]="layout.isOpen('sidebar') ? 'Collapse sidebar' : 'Expand sidebar'"
     [attr.aria-label]="layout.isOpen('sidebar') ? 'Collapse sidebar' : 'Expand sidebar'"
     [attr.aria-expanded]="layout.isOpen('sidebar')"
@@ -18,9 +16,9 @@
     (click)="layout.toggle('sidebar')"
   >
     @if (layout.isOpen("sidebar")) {
-      <i-panel-left-close size="18" aria-hidden="true" [animate]="sidebarIcon.animate()" />
+      <ng-icon name="lucidePanelLeftClose" size="18" aria-hidden="true" />
     } @else {
-      <i-panel-left-open size="18" aria-hidden="true" [animate]="sidebarIcon.animate()" />
+      <ng-icon name="lucidePanelLeftOpen" size="18" aria-hidden="true" />
     }
   </button>
   <app-project-switcher />
@@ -31,8 +29,6 @@
           hlmBtn
           variant="ghost"
           size="icon"
-          appAnimateIcon
-          #terminalIcon="appAnimateIcon"
           [hlmTooltip]="layout.isOpen('bottom') ? 'Hide terminal' : 'Show terminal'"
           [attr.aria-label]="layout.isOpen('bottom') ? 'Hide terminal' : 'Show terminal'"
           [attr.aria-expanded]="layout.isOpen('bottom')"
@@ -40,7 +36,7 @@
           [class.bg-accent]="layout.isOpen('bottom')"
           (click)="layout.toggle('bottom')"
         >
-          <i-square-terminal size="18" aria-hidden="true" [animate]="terminalIcon.animate()" />
+          <ng-icon name="lucideSquareTerminal" size="18" aria-hidden="true" />
         </button>
       }
       @if (layout.has("right")) {
@@ -48,8 +44,6 @@
           hlmBtn
           variant="ghost"
           size="icon"
-          appAnimateIcon
-          #rightIcon="appAnimateIcon"
           [hlmTooltip]="layout.isOpen('right') ? 'Hide right panel' : 'Show right panel'"
           [attr.aria-label]="layout.isOpen('right') ? 'Hide right panel' : 'Show right panel'"
           [attr.aria-expanded]="layout.isOpen('right')"
@@ -58,9 +52,9 @@
           (click)="layout.toggle('right')"
         >
           @if (layout.isOpen("right")) {
-            <i-panel-right-close size="18" aria-hidden="true" [animate]="rightIcon.animate()" />
+            <ng-icon name="lucidePanelRightClose" size="18" aria-hidden="true" />
           } @else {
-            <i-panel-right-open size="18" aria-hidden="true" [animate]="rightIcon.animate()" />
+            <ng-icon name="lucidePanelRightOpen" size="18" aria-hidden="true" />
           }
         </button>
       }
