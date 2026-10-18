@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input } from "@angular/core";
+import { Component, inject, input } from "@angular/core";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 import { HlmButton } from "@ui/button";
 import { LayoutService } from "@shell/layout/layout.service";
@@ -10,7 +10,6 @@ import { LayoutService } from "@shell/layout/layout.service";
  */
 @Component({
   selector: "app-sidebar-item",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HlmButton, RouterLink, RouterLinkActive],
   templateUrl: "./sidebar-item.component.html",
   host: { class: "block" },

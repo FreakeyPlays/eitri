@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { RouterOutlet } from "@angular/router";
 import { HlmButton } from "@ui/button";
 import { NgIcon, provideIcons } from "@ng-icons/core";
@@ -14,7 +14,6 @@ import { LayoutService } from "@shell/layout/layout.service";
  */
 @Component({
   selector: "app-project-scope",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HlmButton, NgIcon, RouterOutlet],
   providers: [provideIcons({ lucideFolderOpen })],
   templateUrl: "./project-scope.component.html",

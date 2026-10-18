@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output, signal } from "@angular/core";
+import { Component, inject, output, signal } from "@angular/core";
 import type { Project } from "@eitri/contracts/project";
 import { NgIcon, provideIcons } from "@ng-icons/core";
 import { lucideSettings } from "@ng-icons/lucide";
@@ -18,7 +18,6 @@ import { ProjectSettingsComponent } from "../project-settings/project-settings.c
  */
 @Component({
   selector: "app-project-menu",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FolderBrowserComponent, HlmButton, NgIcon],
   providers: [provideIcons({ lucideSettings })],
   templateUrl: "./project-menu.component.html",

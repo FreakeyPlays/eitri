@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed } from "@angular/core";
+import { Component, computed } from "@angular/core";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 import { NgIcon, provideIcons } from "@ng-icons/core";
 import { lucideHome } from "@ng-icons/lucide";
@@ -13,7 +13,6 @@ import { ProjectSwitcherComponent } from "../project-switcher/project-switcher.c
  */
 @Component({
   selector: "app-breadcrumbs",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HlmButton, NgIcon, ProjectSwitcherComponent, RouterLink, RouterLinkActive],
   providers: [provideIcons({ lucideHome })],
   templateUrl: "./breadcrumbs.component.html",

@@ -1,6 +1,5 @@
 import {
   afterNextRender,
-  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
@@ -46,7 +45,6 @@ interface Row {
  */
 @Component({
   selector: "app-folder-browser",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HlmButton, HlmInput, NgIcon],
   providers: [provideIcons({ lucideCornerLeftUp, lucideFolder })],
   templateUrl: "./folder-browser.component.html",

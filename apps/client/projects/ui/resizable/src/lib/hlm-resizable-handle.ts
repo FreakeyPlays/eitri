@@ -1,11 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, inject } from "@angular/core";
+import { Component, computed, ElementRef, inject } from "@angular/core";
 import { BrnResizableGroup, BrnResizableHandle } from "@spartan-ng/brain/resizable";
 import { classes } from "@ui/utils";
 
 @Component({
   selector: "hlm-resizable-handle",
   exportAs: "hlmResizableHandle",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   hostDirectives: [{ directive: BrnResizableHandle, inputs: ["withHandle", "disabled"] }],
   host: {
     "data-slot": "resizable-handle",

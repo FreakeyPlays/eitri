@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
+import { Component, computed, inject } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { NgIcon } from "@ng-icons/core";
 import {
@@ -23,7 +23,6 @@ import { SidebarItemComponent } from "./sidebar-item/sidebar-item.component";
  */
 @Component({
   selector: "app-sidebar",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     HlmSidebarHeader,
     HlmSidebarContent,

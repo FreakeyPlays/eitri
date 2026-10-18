@@ -1,11 +1,4 @@
-import {
-  afterNextRender,
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  signal,
-} from "@angular/core";
+import { afterNextRender, Component, DestroyRef, inject, signal } from "@angular/core";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { HlmButton } from "@ui/button";
@@ -23,7 +16,6 @@ import { BreadcrumbsComponent } from "./breadcrumbs/breadcrumbs.component";
 /** The window's title bar: drags the window, shows where the user is, and toggles the panels. */
 @Component({
   selector: "app-app-bar",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HlmButton, BreadcrumbsComponent, NgIcon],
   providers: [
     provideIcons({

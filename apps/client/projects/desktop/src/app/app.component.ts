@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { isTauri } from "@tauri-apps/api/core";
 import { ProjectService } from "@features/projects/project.service";
 import { ShellComponent } from "@shell/shell.component";
@@ -6,7 +6,6 @@ import { ShellComponent } from "@shell/shell.component";
 @Component({
   selector: "app-root",
   imports: [ShellComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./app.component.html",
   host: {
     "[attr.data-desktop]": "desktop ? '' : null",

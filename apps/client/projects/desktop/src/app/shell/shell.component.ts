@@ -1,13 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  effect,
-  inject,
-  signal,
-  untracked,
-} from "@angular/core";
+import { Component, computed, DestroyRef, effect, inject, signal, untracked } from "@angular/core";
 import { RouterOutlet } from "@angular/router";
 import { HlmResizableImports } from "@ui/resizable";
 import { injectRouteTrail } from "@shell/route-trail";
@@ -39,7 +30,6 @@ const sidebarWidth = { open: 240, rail: 42 } as const;
  */
 @Component({
   selector: "app-shell",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppBarComponent,
     EmptyPanelComponent,

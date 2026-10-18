@@ -1,8 +1,7 @@
-import { ChangeDetectionStrategy, Component } from "@angular/core";
+import { Component } from "@angular/core";
 
 @Component({
   selector: "app-wiki",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./wiki.component.html",
   host: { class: "block p-6" },
 })

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, viewChild } from "@angular/core";
+import { Component, computed, inject, viewChild } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { BrnPopoverImports, BrnPopoverTrigger } from "@spartan-ng/brain/popover";
 import { HlmButton } from "@ui/button";
@@ -14,7 +14,6 @@ import { ProjectMenuComponent } from "./project-menu/project-menu.component";
  */
 @Component({
   selector: "app-project-switcher",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [BrnPopoverImports, HlmButton, NgIcon, ProjectMenuComponent],
   providers: [provideIcons({ lucideChevronsUpDown })],
   templateUrl: "./project-switcher.component.html",
