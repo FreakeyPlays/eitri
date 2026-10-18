@@ -1,11 +1,17 @@
 import { Routes } from "@angular/router";
-import { newChatPage } from "@pages/new-chat/new-chat.page";
-import { pageRoute } from "@pages/page";
-import { settingsPage } from "@pages/settings/settings.page";
+import { ManageComponent } from "@pages/manage/manage.component";
+import { NewSessionComponent } from "@pages/new-session/new-session.component";
+import { OverviewComponent } from "@pages/overview/overview.component";
+import { settingsRoute } from "@pages/settings/settings";
+import { WikiComponent } from "@pages/wiki/wiki.component";
 
-/** Every page of Eitri. Create a page in `pages/`, then list it here. */
+/** Every page of Eitri. Each fills the main panel; the shell owns everything around it. */
 export const routes: Routes = [
-  pageRoute(newChatPage),
-  pageRoute(settingsPage),
+  { path: "", pathMatch: "full", redirectTo: "overview" },
+  { path: "overview", component: OverviewComponent },
+  { path: "manage", component: ManageComponent },
+  { path: "wiki", component: WikiComponent },
+  { path: "sessions/new", component: NewSessionComponent },
+  settingsRoute,
   { path: "**", redirectTo: "" },
 ];

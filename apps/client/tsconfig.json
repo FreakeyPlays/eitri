@@ -20,7 +20,6 @@
       "@ui/resizable": ["./projects/ui/resizable/src/index.ts"],
       "@ui/sidebar": ["./projects/ui/sidebar/src/index.ts"],
       "@ui/sidebar/*": ["./projects/ui/sidebar/src/lib/*"],
-      "@ui/tooltip": ["./projects/ui/tooltip/src/index.ts"],
       "@ui/input": ["./projects/ui/input/src/index.ts"],
       "@ui/separator": ["./projects/ui/separator/src/index.ts"],
       "@ui/sheet": ["./projects/ui/sheet/src/index.ts"],

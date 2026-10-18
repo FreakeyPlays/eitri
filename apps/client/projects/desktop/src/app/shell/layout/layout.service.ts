@@ -1,9 +1,14 @@
-import { computed, DestroyRef, inject, Service, signal } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { NavigationEnd, Router } from "@angular/router";
-import { filter, map } from "rxjs";
-import { activePage } from "@pages/page";
-import { defaultLayout, type Layout, LAYOUT_STORAGE_KEY, restoreLayout } from "./layout";
+import { DestroyRef, inject, Service, signal } from "@angular/core";
+/** How the user arranged the shell: which panels are open and what share of its split each takes. */
+export const defaultLayout = {
+  sidebarExpanded: true,
+  rightVisible: false,
+  bottomVisible: false,
+  rightRatio: 0.25,
+  bottomRatio: 0.3,
+};
+
+type Layout = typeof defaultLayout;
 
 export type Panel = "sidebar" | "right" | "bottom";
 
@@ -14,43 +19,22 @@ const visibility = {
 } as const;
 
 /**
- * The open page and how the user arranged the panels around it.
+ * How the user arranged the panels around the main panel.
  * Toggle panels here; the shell and app bar read the same state.
  */
 @Service()
 export class LayoutService {
-  private readonly router = inject(Router);
-  private readonly preferences = signal(load());
+  private readonly preferences = signal({ ...defaultLayout });
   private animationTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** Undefined until the first navigation completes. */
-  readonly page = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => activePage(this.router)),
-    ),
-  );
+  /** The layout on screen. */
+  readonly shown = this.preferences.asReadonly();
 
-  /** The layout on screen: panels the page leaves out stay closed without forgetting the user's choice. */
-  readonly shown = computed<Layout>(() => {
-    const preferences = this.preferences();
-    return {
-      ...preferences,
-      rightVisible: this.has("right") && preferences.rightVisible,
-      bottomVisible: this.has("bottom") && preferences.bottomVisible,
-    };
-  });
-
-  /** True for a moment after a toggle: toggles animate, while drags and restored layouts stay instant. */
+  /** True for a moment after a toggle: toggles animate, while drags stay instant. */
   readonly animating = signal(false);
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.animationTimer));
-  }
-
-  /** Whether the open page has this panel. */
-  has(panel: Panel) {
-    return panel === "sidebar" || !!this.page()?.[panel];
   }
 
   isOpen(panel: Panel) {
@@ -64,29 +48,10 @@ export class LayoutService {
     this.animationTimer = setTimeout(() => this.animating.set(false), 200);
     const key = visibility[panel];
     this.preferences.update((current) => ({ ...current, [key]: !current[key] }));
-    this.save();
   }
 
-  /** Remembers sizes after the user finished resizing, never on every frame of a drag. */
-  resize(sizes: Partial<Pick<Layout, "sidebarWidth" | "rightWidth" | "bottomRatio">>) {
+  /** Keeps sizes after the user finished resizing, never on every frame of a drag. */
+  resize(sizes: Partial<Pick<Layout, "rightRatio" | "bottomRatio">>) {
     this.preferences.update((current) => ({ ...current, ...sizes }));
-    this.save();
-  }
-
-  private save() {
-    try {
-      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(this.preferences()));
-    } catch {
-      /* Layout remains usable without persistence. */
-    }
-  }
-}
-
-function load() {
-  try {
-    return restoreLayout(localStorage.getItem(LAYOUT_STORAGE_KEY));
-  } catch {
-    /* Storage can be unavailable in restricted webviews. */
-    return { ...defaultLayout };
   }
 }

@@ -9,7 +9,6 @@ import {
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { HlmButton } from "@ui/button";
-import { HlmTooltip } from "@ui/tooltip";
 import { NgIcon, provideIcons } from "@ng-icons/core";
 import {
   lucidePanelLeftClose,
@@ -21,11 +20,11 @@ import {
 import { LayoutService } from "@shell/layout/layout.service";
 import { ProjectSwitcherComponent } from "./project-switcher/project-switcher.component";
 
-/** The window's title bar: drags the window, names the open project, and toggles the page's panels. */
+/** The window's title bar: drags the window, names the open project, and toggles the panels. */
 @Component({
   selector: "app-app-bar",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HlmButton, HlmTooltip, ProjectSwitcherComponent, NgIcon],
+  imports: [HlmButton, ProjectSwitcherComponent, NgIcon],
   providers: [
     provideIcons({
       lucidePanelLeftClose,

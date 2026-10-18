@@ -3,26 +3,11 @@ import { provideRouter, Router } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
 import { routes } from "../app.routes";
 import { ShellComponent } from "./shell.component";
-import { LAYOUT_STORAGE_KEY } from "./layout/layout";
 
 describe("ShellComponent", () => {
   beforeEach(() => {
-    const storage = new Map<string, string>();
-    vi.stubGlobal("localStorage", {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => storage.set(key, value),
-    });
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        observe() {}
-        disconnect() {}
-      },
-    );
     TestBed.configureTestingModule({ providers: [provideSpartanHlm(), provideRouter(routes)] });
   });
-
-  afterEach(() => vi.unstubAllGlobals());
 
   async function render(url = "/") {
     const fixture = TestBed.createComponent(ShellComponent);
@@ -51,10 +36,11 @@ describe("ShellComponent", () => {
     },
   );
 
-  it("fills each region from the open page", async () => {
+  it("opens the overview with the sidebar and placeholder panels", async () => {
     const { element } = await render();
-    expect(element.querySelector("#shell-sidebar app-chat-sidebar")).not.toBeNull();
-    expect(element.querySelector("#shell-main app-new-chat")).not.toBeNull();
+    expect(TestBed.inject(Router).url).toBe("/overview");
+    expect(element.querySelector("#shell-sidebar app-sidebar")).not.toBeNull();
+    expect(element.querySelector("#shell-main app-overview")).not.toBeNull();
     expect(element.querySelector("#shell-right app-empty-panel")).not.toBeNull();
     expect(element.querySelector("#shell-bottom app-empty-panel")).not.toBeNull();
   });
@@ -64,43 +50,34 @@ describe("ShellComponent", () => {
     for (const id of ["shell-right", "shell-bottom"]) {
       expect(element.querySelector(`#${id}`)?.getAttribute("data-panel-size")).toBe("0");
     }
-    expect(element.querySelector('[aria-label="Open chats"]')).not.toBeNull();
+    expect(element.querySelector('[aria-label="Sessions"]')).not.toBeNull();
     button("Collapse sidebar").click();
     await fixture.whenStable();
     expect(element.querySelector("#shell-sidebar")).not.toBeNull();
-    expect(element.querySelector('[aria-label="Open chats"]')).toBeNull();
-    for (const label of ["New Chat", "Settings"]) {
-      expect(button(label).textContent?.trim()).toBe("");
+    expect(element.querySelector('[aria-label="Sessions"]')).toBeNull();
+    for (const label of ["Overview", "Settings"]) {
+      expect(element.querySelector(`a[aria-label="${label}"]`)?.textContent?.trim()).toBe("");
     }
     button("Expand sidebar").click();
     await fixture.whenStable();
-    expect(element.querySelector('[aria-label="Open chats"]')).not.toBeNull();
+    expect(element.querySelector('[aria-label="Sessions"]')).not.toBeNull();
   });
 
-  it("swaps sidebar and main panel on settings and hides its missing panels without forgetting them", async () => {
+  it("swaps the sidebar on settings while panels stay as the user left them", async () => {
     const { fixture, element, button } = await render();
-    button("Show right panel").click();
     button("Show terminal").click();
     await fixture.whenStable();
-    await TestBed.inject(Router).navigateByUrl("/settings");
+    element.querySelector<HTMLAnchorElement>('a[aria-label="Settings"]')!.click();
     await fixture.whenStable();
-    expect(element.querySelector("#shell-main app-settings")).not.toBeNull();
-    expect(element.querySelector("#shell-sidebar app-settings-sidebar")).not.toBeNull();
-    expect(element.querySelector('[aria-label="Workspace panels"]')).toBeNull();
-    for (const id of ["shell-right", "shell-bottom"]) {
-      const panel = element.querySelector<HTMLElement>(`#${id}`)!;
-      expect(panel.getAttribute("data-panel-size")).toBe("0");
-      expect(panel.inert).toBe(true);
-      expect(panel.querySelector("app-empty-panel")).toBeNull();
-    }
-    button("Back to app").click();
+    expect(TestBed.inject(Router).url).toBe("/settings/appearance");
+    expect(element.querySelector("#shell-main app-appearance")).not.toBeNull();
+    expect(element.querySelector('#shell-sidebar a[aria-label="Back"]')).not.toBeNull();
+    expect(
+      Number(element.querySelector("#shell-bottom")?.getAttribute("data-panel-size")),
+    ).toBeGreaterThan(0);
+    element.querySelector<HTMLAnchorElement>('a[aria-label="Back"]')!.click();
     await fixture.whenStable();
-    expect(element.querySelector("#shell-main app-new-chat")).not.toBeNull();
-    for (const id of ["shell-right", "shell-bottom"]) {
-      expect(
-        Number(element.querySelector(`#${id}`)?.getAttribute("data-panel-size")),
-      ).toBeGreaterThan(0);
-    }
+    expect(element.querySelector("#shell-main app-overview")).not.toBeNull();
   });
 
   it("collapses panels and their handles without remounting the main panel", async () => {
@@ -130,36 +107,17 @@ describe("ShellComponent", () => {
     }
   });
 
-  it("supports keyboard resizing, restores widths after collapse, and persists visibility", async () => {
+  it("collapses the fixed-width sidebar to the icon rail and back", async () => {
     const { fixture, element, button } = await render();
-    const handle = element.querySelector<HTMLElement>(
-      'hlm-resizable-handle[aria-label="Resize sidebar"]',
-    )!;
-    const panel = element.querySelector<HTMLElement>("#shell-sidebar")!;
-    const before = Number(panel.getAttribute("data-panel-size"));
-    handle.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-    handle.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
-    await fixture.whenStable();
-    const resized = Number(panel.getAttribute("data-panel-size"));
-    expect(resized).toBeGreaterThan(before);
+    const sidebar = element.querySelector<HTMLElement>("#shell-sidebar")!;
+    expect(sidebar.style.width).toBe("240px");
+    expect(element.querySelector('hlm-resizable-handle[aria-controls="shell-sidebar"]')).toBeNull();
     button("Collapse sidebar").click();
     await fixture.whenStable();
-    expect(Number(panel.getAttribute("data-panel-size"))).toBeLessThan(before);
+    expect(sidebar.style.width).toBe("42px");
     button("Expand sidebar").click();
-    button("Show terminal").click();
     await fixture.whenStable();
-    expect(Number(panel.getAttribute("data-panel-size"))).toBeCloseTo(resized);
-    expect(JSON.parse(localStorage.getItem(LAYOUT_STORAGE_KEY)!).bottomVisible).toBe(true);
-    fixture.destroy();
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [provideSpartanHlm(), provideRouter(routes)] });
-    const restored = await render();
-    expect(
-      Number(restored.element.querySelector("#shell-bottom")?.getAttribute("data-panel-size")),
-    ).toBeGreaterThan(0);
-    expect(
-      Number(restored.element.querySelector("#shell-sidebar")?.getAttribute("data-panel-size")),
-    ).toBeCloseTo(resized);
+    expect(sidebar.style.width).toBe("240px");
   });
 
   it("resizes the right and bottom independently with nested panels present", async () => {
@@ -184,16 +142,18 @@ describe("ShellComponent", () => {
   });
 
   it("resizes by dragging and preserves a complete layout at keyboard extremes", async () => {
-    const { fixture, element } = await render();
+    const { fixture, element, button } = await render();
+    button("Show right panel").click();
+    await fixture.whenStable();
     const handle = element.querySelector<HTMLElement>(
-      'hlm-resizable-handle[aria-label="Resize sidebar"]',
+      'hlm-resizable-handle[aria-label="Resize right panel"]',
     )!;
     const group = handle.parentElement!;
     Object.defineProperty(group, "offsetWidth", { value: 1200 });
-    const panel = element.querySelector<HTMLElement>("#shell-sidebar")!;
+    const panel = element.querySelector<HTMLElement>("#shell-right")!;
     const before = Number(panel.getAttribute("data-panel-size"));
-    handle.dispatchEvent(new MouseEvent("mousedown", { clientX: 240, bubbles: true }));
-    document.dispatchEvent(new MouseEvent("mousemove", { clientX: 300, bubbles: true }));
+    handle.dispatchEvent(new MouseEvent("mousedown", { clientX: 900, bubbles: true }));
+    document.dispatchEvent(new MouseEvent("mousemove", { clientX: 800, bubbles: true }));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
     await fixture.whenStable();

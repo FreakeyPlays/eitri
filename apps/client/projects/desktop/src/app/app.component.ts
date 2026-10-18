@@ -7,7 +7,7 @@ import { ShellComponent } from "@shell/shell.component";
   selector: "app-root",
   imports: [ShellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: "<app-shell />",
+  templateUrl: "./app.component.html",
   host: {
     "[attr.data-desktop]": "desktop ? '' : null",
     "(document:contextmenu)": "onContextMenu($event)",

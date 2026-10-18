@@ -89,13 +89,13 @@ const sidebar = (side: "left" | "right") => `
             </li>
 
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Inbox" aria-describedby="Inbox">
+              <button hlmSidebarMenuButton aria-describedby="Inbox">
                 <ng-icon name="lucideInbox" />
                 <span>Inbox</span>
               </button>
             </li>
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Calendar" aria-describedby="Calendar">
+              <button hlmSidebarMenuButton aria-describedby="Calendar">
                 <ng-icon name="lucideCalendar" />
                 <span>Calendar</span>
               </button>
@@ -104,7 +104,7 @@ const sidebar = (side: "left" | "right") => `
             <hlm-sidebar-separator />
 
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Search" aria-describedby="Search">
+              <button hlmSidebarMenuButton aria-describedby="Search">
                 <ng-icon name="lucideSearch" />
                 <span>Search</span>
                 <div hlmSidebarMenuBadge>10</div>
@@ -112,7 +112,7 @@ const sidebar = (side: "left" | "right") => `
             </li>
 
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Settings" aria-describedby="Settings">
+              <button hlmSidebarMenuButton aria-describedby="Settings">
                 <ng-icon name="lucideSettings" />
                 <span>Settings</span>
               </button>
@@ -125,31 +125,31 @@ const sidebar = (side: "left" | "right") => `
         <div hlmSidebarGroupContent>
           <ul hlmSidebarMenu>
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Home" aria-describedby="Home">
+              <button hlmSidebarMenuButton aria-describedby="Home">
                 <ng-icon name="lucideHouse" />
                 <span>Home</span>
               </button>
             </li>
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Inbox" aria-describedby="Inbox">
+              <button hlmSidebarMenuButton aria-describedby="Inbox">
                 <ng-icon name="lucideInbox" />
                 <span>Inbox</span>
               </button>
             </li>
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Calendar" aria-describedby="Calendar">
+              <button hlmSidebarMenuButton aria-describedby="Calendar">
                 <ng-icon name="lucideCalendar" />
                 <span>Calendar</span>
               </button>
             </li>
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Search" aria-describedby="Search">
+              <button hlmSidebarMenuButton aria-describedby="Search">
                 <ng-icon name="lucideSearch" />
                 <span>Search</span>
               </button>
             </li>
             <li hlmSidebarMenuItem>
-              <button hlmSidebarMenuButton tooltip="Settings" aria-describedby="Settings">
+              <button hlmSidebarMenuButton aria-describedby="Settings">
                 <ng-icon name="lucideSettings" />
                 <span>Settings</span>
               </button>
@@ -160,7 +160,7 @@ const sidebar = (side: "left" | "right") => `
     </div>
 
     <div hlmSidebarFooter>
-      <button hlmSidebarMenuButton tooltip="Settings" aria-describedby="Settings">
+      <button hlmSidebarMenuButton aria-describedby="Settings">
         <ng-icon name="lucideSettings" />
         <span>Settings</span>
       </button>

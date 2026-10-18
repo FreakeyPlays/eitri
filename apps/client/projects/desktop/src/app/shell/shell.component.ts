@@ -1,77 +1,60 @@
-import {
-  afterNextRender,
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from "@angular/core";
-import { NgComponentOutlet } from "@angular/common";
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
 import { RouterOutlet } from "@angular/router";
 import { HlmResizableImports } from "@ui/resizable";
 import { AppBarComponent } from "./app-bar/app-bar.component";
-import { measureLayout } from "./layout/layout";
-import { LayoutService, type Panel } from "./layout/layout.service";
+import { EmptyPanelComponent } from "./empty-panel/empty-panel.component";
+import { LayoutService } from "./layout/layout.service";
+import { SidebarComponent } from "./sidebar/sidebar.component";
+
+type Split = "right" | "bottom";
+
+/** A split's percentages; a hidden panel keeps size 0 so showing it can animate. */
+const split = (open: boolean, ratio: number) =>
+  open ? [100 - ratio * 100, ratio * 100] : [100, 0];
 
 /**
- * The window around every page: app bar and resizable panels.
- * The open page decides what fills the panels; see `pages/page.ts`.
+ * The window around every page: app bar, sidebar, and resizable panels.
+ * The router fills the main panel; see `app.routes.ts`.
  */
 @Component({
   selector: "app-shell",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AppBarComponent, HlmResizableImports, NgComponentOutlet, RouterOutlet],
+  imports: [
+    AppBarComponent,
+    EmptyPanelComponent,
+    HlmResizableImports,
+    RouterOutlet,
+    SidebarComponent,
+  ],
   templateUrl: "./shell.component.html",
   host: { class: "flex h-dvh min-h-0 flex-col overflow-hidden bg-muted/40 text-foreground" },
 })
 export class ShellComponent {
-  private readonly destroyRef = inject(DestroyRef);
   protected readonly layout = inject(LayoutService);
-  private readonly panels = viewChild.required<ElementRef<HTMLElement>>("panels");
-  private readonly size = signal({ width: 1200, height: 750 });
-  protected readonly dimensions = computed(() =>
-    measureLayout(this.layout.shown(), this.size().width, this.size().height),
+  protected readonly right = computed(() =>
+    split(this.layout.isOpen("right"), this.layout.shown().rightRatio),
   );
-  protected readonly dragging = signal<Panel | null>(null);
-  private latest: Record<Panel, number[]> = { sidebar: [], right: [], bottom: [] };
+  protected readonly bottom = computed(() =>
+    split(this.layout.isOpen("bottom"), this.layout.shown().bottomRatio),
+  );
+  protected readonly dragging = signal<Split | null>(null);
+  private latest: Record<Split, number[]> = { right: [], bottom: [] };
 
-  constructor() {
-    afterNextRender(() => {
-      const element = this.panels().nativeElement;
-      const measure = () => {
-        const { width, height } = element.getBoundingClientRect();
-        if (width > 0 && height > 0) this.size.set({ width, height });
-      };
-      measure();
-      const observer = new ResizeObserver(measure);
-      observer.observe(element);
-      this.destroyRef.onDestroy(() => observer.disconnect());
-    });
-  }
-
-  protected remember(split: Panel, sizes: number[]) {
+  protected remember(split: Split, sizes: number[]) {
     this.latest[split] = sizes;
   }
 
-  /** Converts the dragged split back to pixels or a ratio, so sizes survive window resizes. */
-  protected finishResize(split: Panel) {
+  /** Keeps the dragged panel's share of its split once the drag ends. */
+  protected finishResize(split: Split) {
     this.dragging.set(null);
     const sizes = this.latest[split];
-    if (sizes.length !== 2) return;
-    const dimensions = this.dimensions();
-    if (split === "sidebar" && this.layout.isOpen("sidebar")) {
-      this.layout.resize({ sidebarWidth: (sizes[0] * dimensions.outerSpace) / 100 });
-    } else if (split === "right" && this.layout.isOpen("right")) {
-      this.layout.resize({ rightWidth: (sizes[1] * dimensions.innerSpace) / 100 });
-    } else if (split === "bottom" && this.layout.isOpen("bottom")) {
-      this.layout.resize({ bottomRatio: sizes[1] / 100 });
-    }
+    if (sizes.length !== 2 || !this.layout.isOpen(split)) return;
+    this.layout.resize(
+      split === "right" ? { rightRatio: sizes[1] / 100 } : { bottomRatio: sizes[1] / 100 },
+    );
   }
 
-  protected finishKeyboardResize(split: Panel, event: KeyboardEvent) {
+  protected finishKeyboardResize(split: Split, event: KeyboardEvent) {
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
       this.finishResize(split);
     }

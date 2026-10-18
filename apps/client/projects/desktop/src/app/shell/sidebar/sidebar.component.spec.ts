@@ -1,0 +1,88 @@
+import { Component, signal } from "@angular/core";
+import { TestBed } from "@angular/core/testing";
+import { provideRouter, Router } from "@angular/router";
+import { provideSpartanHlm } from "@ui/utils";
+import { settingsRoute } from "@pages/settings/settings";
+import { LayoutService } from "@shell/layout/layout.service";
+import { SidebarComponent } from "./sidebar.component";
+
+@Component({ template: "" })
+class BlankComponent {}
+
+describe("SidebarComponent", () => {
+  const sidebarExpanded = signal(true);
+
+  beforeEach(() => {
+    sidebarExpanded.set(true);
+    TestBed.configureTestingModule({
+      providers: [
+        provideSpartanHlm(),
+        provideRouter([
+          { path: "", pathMatch: "full", redirectTo: "overview" },
+          { path: "overview", component: BlankComponent },
+          settingsRoute,
+        ]),
+        { provide: LayoutService, useValue: { isOpen: () => sidebarExpanded() } },
+      ],
+    });
+  });
+
+  async function render(url: string) {
+    const fixture = TestBed.createComponent(SidebarComponent);
+    await TestBed.inject(Router).navigateByUrl(url);
+    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
+    const links = () =>
+      [...element.querySelectorAll("a")].map((link) => [
+        link.getAttribute("aria-label") ?? link.textContent?.trim(),
+        link.getAttribute("href"),
+      ]);
+    return { fixture, element, links };
+  }
+
+  it("shows the workspace pages, sessions, and settings", async () => {
+    const { element, links } = await render("/overview");
+    expect(links()).toEqual([
+      ["Overview", "/overview"],
+      ["Manage", "/manage"],
+      ["Wiki", "/wiki"],
+      ["New session", "/sessions/new"],
+      ["Settings", "/settings"],
+    ]);
+    expect(element.querySelector('a[aria-current="page"]')?.getAttribute("aria-label")).toBe(
+      "Overview",
+    );
+  });
+
+  it("swaps to the settings pages and back with the URL", async () => {
+    const { fixture, element, links } = await render("/settings");
+    expect(links()).toEqual([
+      ["Appearance", "/settings/appearance"],
+      ["Preferences", "/settings/preferences"],
+      ["Providers", "/settings/providers"],
+      ["Skills", "/settings/skills"],
+      ["Back", "/"],
+    ]);
+    expect([...element.querySelectorAll("section h2")].map((h) => h.textContent?.trim())).toEqual([
+      "General",
+      "Agents",
+    ]);
+    expect(element.querySelector('a[aria-current="page"]')?.getAttribute("aria-label")).toBe(
+      "Appearance",
+    );
+
+    element.querySelector<HTMLAnchorElement>('a[aria-label="Back"]')!.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe("/overview");
+    expect(element.querySelector('a[aria-label="Settings"]')).not.toBeNull();
+  });
+
+  it("keeps only the icon rail while collapsed", async () => {
+    const { fixture, element, links } = await render("/overview");
+    sidebarExpanded.set(false);
+    await fixture.whenStable();
+    expect(element.querySelector('[aria-label="Sessions"]')).toBeNull();
+    expect(links().map(([label]) => label)).toEqual(["Overview", "Manage", "Wiki", "Settings"]);
+    expect(element.querySelectorAll("a ng-icon svg")).toHaveLength(4);
+  });
+});

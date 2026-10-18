@@ -1,0 +1,58 @@
+@if (settings()) {
+  <div hlmSidebarContent class="gap-1 p-1">
+    @for (section of settingsSections; track section.label) {
+      <section class="flex flex-col gap-1" [attr.aria-label]="section.label">
+        @if (expanded()) {
+          <h2
+            class="px-2.5 pt-3 pb-1 text-xs font-medium text-muted-foreground transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
+          >
+            {{ section.label }}
+          </h2>
+        }
+        @for (page of section.pages; track page.path) {
+          <app-sidebar-item [label]="page.label" [link]="'/settings/' + page.path">
+            <ng-icon [svg]="page.icon" class="shrink-0" size="18" aria-hidden="true" />
+          </app-sidebar-item>
+        }
+      </section>
+    }
+  </div>
+  <div hlmSidebarFooter class="gap-1 p-1">
+    <app-sidebar-item label="Back" link="/">
+      <ng-icon [svg]="icons.lucideArrowLeft" class="shrink-0" size="18" aria-hidden="true" />
+    </app-sidebar-item>
+  </div>
+} @else {
+  <div hlmSidebarHeader class="gap-1 p-1">
+    @for (page of workspacePages; track page.link) {
+      <app-sidebar-item [label]="page.label" [link]="page.link">
+        <ng-icon [svg]="page.icon" class="shrink-0" size="18" aria-hidden="true" />
+      </app-sidebar-item>
+    }
+  </div>
+  <div hlmSidebarContent>
+    @if (expanded()) {
+      <section
+        class="px-2 pt-4 transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
+        aria-label="Sessions"
+      >
+        <h2 class="px-2.5 pb-1 text-xs font-medium text-muted-foreground">Sessions</h2>
+        <a
+          hlmBtn
+          variant="ghost"
+          size="sm"
+          class="w-full justify-start gap-2 px-2.5 text-muted-foreground"
+          routerLink="/sessions/new"
+        >
+          <ng-icon [svg]="icons.lucidePlus" class="shrink-0" size="16" aria-hidden="true" />
+          New session
+        </a>
+      </section>
+    }
+  </div>
+  <div hlmSidebarFooter class="gap-1 p-1">
+    <app-sidebar-item label="Settings" link="/settings">
+      <ng-icon [svg]="icons.lucideSettings" class="shrink-0" size="18" aria-hidden="true" />
+    </app-sidebar-item>
+  </div>
+}
