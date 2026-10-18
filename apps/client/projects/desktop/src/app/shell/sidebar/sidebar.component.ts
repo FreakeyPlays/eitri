@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterLink } from "@angular/router";
 import { filter, map } from "rxjs";
@@ -48,7 +48,7 @@ const inSettings = (url: string) => url === "/settings" || url.startsWith("/sett
 export class SidebarComponent {
   private readonly router = inject(Router);
   private readonly layout = inject(LayoutService);
-  protected readonly expanded = computed(() => this.layout.isOpen("sidebar"));
+  protected readonly expanded = this.layout.sidebarShown;
   protected readonly settings = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),

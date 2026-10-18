@@ -1,5 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
-import { RouterOutlet } from "@angular/router";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  signal,
+} from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
+import { filter } from "rxjs";
 import { HlmResizableImports } from "@ui/resizable";
 import { AppBarComponent } from "./app-bar/app-bar.component";
 import { EmptyPanelComponent } from "./empty-panel/empty-panel.component";
@@ -11,6 +20,14 @@ type Split = "right" | "bottom";
 /** A split's percentages; a hidden panel keeps size 0 so showing it can animate. */
 const split = (open: boolean, ratio: number) =>
   open ? [100 - ratio * 100, ratio * 100] : [100, 0];
+
+/**
+ * How long the pointer rests on the collapsed rail before it peeks, and the grace after leaving.
+ * After a click on the rail it waits longer, so the user can take in the new page first.
+ */
+const peekDelay = 350;
+const peekDelayAfterClick = 1200;
+const unpeekDelay = 150;
 
 /**
  * The window around every page: app bar, sidebar, and resizable panels.
@@ -27,7 +44,10 @@ const split = (open: boolean, ratio: number) =>
     SidebarComponent,
   ],
   templateUrl: "./shell.component.html",
-  host: { class: "flex h-dvh min-h-0 flex-col overflow-hidden bg-muted/40 text-foreground" },
+  host: {
+    class: "flex h-dvh min-h-0 flex-col overflow-hidden bg-muted/40 text-foreground",
+    "(document:keydown.escape)": "unpeek()",
+  },
 })
 export class ShellComponent {
   protected readonly layout = inject(LayoutService);
@@ -39,6 +59,52 @@ export class ShellComponent {
   );
   protected readonly dragging = signal<Split | null>(null);
   private latest: Record<Split, number[]> = { right: [], bottom: [] };
+  private peekTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Off after a peek closes under the pointer, until it leaves the rail. */
+  private peekArmed = true;
+  private peekWait = peekDelay;
+
+  constructor() {
+    inject(Router)
+      .events.pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.unpeek());
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.peekTimer));
+  }
+
+  /** Peeks the collapsed sidebar once the pointer stops moving on it; passing over never opens it. */
+  protected rest(event: PointerEvent) {
+    clearTimeout(this.peekTimer);
+    if (event.pointerType === "touch" || !this.peekArmed) return;
+    if (this.layout.isOpen("sidebar") || this.layout.peeking()) return;
+    this.peekTimer = setTimeout(() => {
+      this.peekWait = peekDelay;
+      this.layout.peeking.set(true);
+    }, this.peekWait);
+  }
+
+  protected press() {
+    clearTimeout(this.peekTimer);
+    this.peekWait = peekDelayAfterClick;
+  }
+
+  protected leave() {
+    clearTimeout(this.peekTimer);
+    this.peekArmed = true;
+    this.peekWait = peekDelay;
+    if (this.layout.peeking()) {
+      this.peekTimer = setTimeout(() => this.layout.peeking.set(false), unpeekDelay);
+    }
+  }
+
+  protected unpeek() {
+    if (!this.layout.peeking()) return;
+    clearTimeout(this.peekTimer);
+    this.peekArmed = false;
+    this.layout.peeking.set(false);
+  }
 
   protected remember(split: Split, sizes: number[]) {
     this.latest[split] = sizes;

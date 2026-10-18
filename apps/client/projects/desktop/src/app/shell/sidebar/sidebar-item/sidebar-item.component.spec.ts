@@ -17,7 +17,7 @@ describe("SidebarItemComponent", () => {
       providers: [
         provideSpartanHlm(),
         provideRouter([{ path: "**", component: BlankComponent }]),
-        { provide: LayoutService, useValue: { isOpen: () => sidebarExpanded() } },
+        { provide: LayoutService, useValue: { sidebarShown: sidebarExpanded } },
       ],
     });
   });

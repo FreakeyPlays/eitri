@@ -22,7 +22,7 @@ describe("SidebarComponent", () => {
           { path: "overview", component: BlankComponent },
           settingsRoute,
         ]),
-        { provide: LayoutService, useValue: { isOpen: () => sidebarExpanded() } },
+        { provide: LayoutService, useValue: { sidebarShown: sidebarExpanded } },
       ],
     });
   });

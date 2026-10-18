@@ -1,4 +1,4 @@
-import { DestroyRef, inject, Service, signal } from "@angular/core";
+import { computed, DestroyRef, inject, Service, signal } from "@angular/core";
 /** How the user arranged the shell: which panels are open and what share of its split each takes. */
 export const defaultLayout = {
   sidebarExpanded: true,
@@ -33,6 +33,12 @@ export class LayoutService {
   /** True for a moment after a toggle: toggles animate, while drags stay instant. */
   readonly animating = signal(false);
 
+  /** The collapsed sidebar shown expanded over the main panel, without changing the preference. */
+  readonly peeking = signal(false);
+
+  /** Whether the sidebar looks expanded: kept open, or peeking while collapsed. */
+  readonly sidebarShown = computed(() => this.isOpen("sidebar") || this.peeking());
+
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.animationTimer));
   }
@@ -46,6 +52,7 @@ export class LayoutService {
     clearTimeout(this.animationTimer);
     this.animating.set(true);
     this.animationTimer = setTimeout(() => this.animating.set(false), 200);
+    if (panel === "sidebar") this.peeking.set(false);
     const key = visibility[panel];
     this.preferences.update((current) => ({ ...current, [key]: !current[key] }));
   }

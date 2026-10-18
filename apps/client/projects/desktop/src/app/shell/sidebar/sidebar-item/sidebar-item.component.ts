@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, input } from "@angular/core";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 import { HlmButton } from "@ui/button";
 import { LayoutService } from "@shell/layout/layout.service";
@@ -20,5 +20,5 @@ export class SidebarItemComponent {
   readonly link = input.required<string>();
 
   private readonly layout = inject(LayoutService);
-  protected readonly expanded = computed(() => this.layout.isOpen("sidebar"));
+  protected readonly expanded = this.layout.sidebarShown;
 }

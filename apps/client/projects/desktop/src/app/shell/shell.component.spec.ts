@@ -139,6 +139,90 @@ describe("ShellComponent", () => {
     expect(sidebar.style.width).toBe("240px");
   });
 
+  it("peeks the collapsed sidebar over the main panel while the pointer rests on it", async () => {
+    const { fixture, element, button } = await render();
+    button("Collapse sidebar").click();
+    await fixture.whenStable();
+    vi.useFakeTimers();
+    try {
+      const sidebar = element.querySelector<HTMLElement>("#shell-sidebar")!;
+      const rail = sidebar.parentElement!;
+      const pointer = (type: string, pointerType = "mouse") =>
+        rail.dispatchEvent(new PointerEvent(type, { pointerType }));
+      const settle = async (ms: number) => {
+        vi.advanceTimersByTime(ms);
+        fixture.detectChanges();
+      };
+
+      pointer("pointermove");
+      await settle(200);
+      pointer("pointermove");
+      await settle(200);
+      expect(sidebar.style.width).toBe("42px");
+      await settle(150);
+      expect(sidebar.style.width).toBe("240px");
+      expect(rail.style.width).toBe("42px");
+      expect(element.querySelector('[aria-label="Sessions"]')).not.toBeNull();
+      expect(button("Expand sidebar").getAttribute("aria-expanded")).toBe("false");
+
+      pointer("pointerleave");
+      await settle(100);
+      pointer("pointermove");
+      await settle(100);
+      expect(sidebar.style.width).toBe("240px");
+
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      fixture.detectChanges();
+      expect(sidebar.style.width).toBe("42px");
+      pointer("pointermove");
+      await settle(500);
+      expect(sidebar.style.width).toBe("42px");
+
+      pointer("pointerleave");
+      pointer("pointermove", "touch");
+      await settle(500);
+      expect(sidebar.style.width).toBe("42px");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("waits longer to peek after a click on the rail", async () => {
+    const { fixture, element, button } = await render();
+    button("Collapse sidebar").click();
+    await fixture.whenStable();
+    vi.useFakeTimers();
+    try {
+      const sidebar = element.querySelector<HTMLElement>("#shell-sidebar")!;
+      const rail = sidebar.parentElement!;
+      const pointer = (type: string) =>
+        rail.dispatchEvent(new PointerEvent(type, { pointerType: "mouse" }));
+
+      pointer("pointermove");
+      vi.advanceTimersByTime(300);
+      pointer("pointerdown");
+      vi.advanceTimersByTime(1100);
+      fixture.detectChanges();
+      expect(sidebar.style.width).toBe("42px");
+      pointer("pointermove");
+      vi.advanceTimersByTime(1100);
+      fixture.detectChanges();
+      expect(sidebar.style.width).toBe("42px");
+      vi.advanceTimersByTime(100);
+      fixture.detectChanges();
+      expect(sidebar.style.width).toBe("240px");
+
+      pointer("pointerleave");
+      vi.advanceTimersByTime(150);
+      pointer("pointermove");
+      vi.advanceTimersByTime(350);
+      fixture.detectChanges();
+      expect(sidebar.style.width).toBe("240px");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("resizes the right and bottom independently with nested panels present", async () => {
     const { fixture, element, button } = await render();
     button("Show right panel").click();

@@ -26,6 +26,17 @@ describe("LayoutService", () => {
     expect(layout.animating()).toBe(false);
   });
 
+  it("shows the sidebar while peeking, and drops the peek on toggle", () => {
+    const layout = TestBed.inject(LayoutService);
+    layout.toggle("sidebar");
+    expect(layout.sidebarShown()).toBe(false);
+    layout.peeking.set(true);
+    expect(layout.sidebarShown()).toBe(true);
+    expect(layout.isOpen("sidebar")).toBe(false);
+    layout.toggle("sidebar");
+    expect(layout.peeking()).toBe(false);
+  });
+
   it("starts from the default layout", () => {
     expect(TestBed.inject(LayoutService).shown()).toEqual(defaultLayout);
   });
