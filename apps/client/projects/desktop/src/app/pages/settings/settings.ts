@@ -60,8 +60,13 @@ const settingsPages = settingsSections.flatMap((section) => section.pages);
 /** `/settings` opens the first page; list this route in `app.routes.ts`. */
 export const settingsRoute: Route = {
   path: "settings",
+  data: { crumb: "Settings" },
   children: [
     { path: "", pathMatch: "full", redirectTo: settingsPages[0].path },
-    ...settingsPages.map(({ path, component }) => ({ path, component })),
+    ...settingsPages.map(({ path, label, component }) => ({
+      path,
+      component,
+      data: { crumb: label },
+    })),
   ],
 };
