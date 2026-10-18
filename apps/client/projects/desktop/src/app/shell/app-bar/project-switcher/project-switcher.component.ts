@@ -21,7 +21,7 @@ import { ProjectMenuComponent } from "./project-menu/project-menu.component";
 export class ProjectSwitcherComponent {
   protected readonly projects = inject(ProjectService);
 
-  protected readonly name = computed(() => this.projects.active()?.name ?? "No project");
+  protected readonly name = computed(() => this.projects.active()?.name ?? "Select Project");
   protected readonly label = computed(() => {
     const active = this.projects.active();
     return active ? `Project ${active.name}. Switch project.` : "Open a project";
