@@ -1,3 +1,4 @@
+import type { Type } from "@angular/core";
 import type { Route } from "@angular/router";
 import { lucideBot, lucideNotebook, lucidePalette, lucideWrench } from "@ng-icons/lucide";
 import { AppearanceComponent } from "./appearance/appearance.component";
@@ -5,11 +6,17 @@ import { PreferencesComponent } from "./preferences/preferences.component";
 import { ProvidersComponent } from "./providers/providers.component";
 import { SkillsComponent } from "./skills/skills.component";
 
+interface SettingsSection {
+  /** Heading above the pages in the sidebar; leave it out to show the pages without one. */
+  label?: string;
+  pages: { path: string; label: string; icon: string; component: Type<unknown> }[];
+}
+
 /**
  * Every settings page, grouped as the settings sidebar shows them.
  * Add a page here and it gets its route under `/settings` and its sidebar entry.
  */
-export const settingsSections = [
+export const settingsSections: SettingsSection[] = [
   {
     label: "General",
     pages: [

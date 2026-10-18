@@ -2,7 +2,7 @@ import { Component, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
-import { settingsRoute } from "@pages/settings/settings";
+import { settingsRoute, settingsSections } from "@pages/settings/settings";
 import { LayoutService } from "@shell/layout/layout.service";
 import { SidebarComponent } from "./sidebar.component";
 
@@ -75,6 +75,18 @@ describe("SidebarComponent", () => {
     await fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe("/overview");
     expect(element.querySelector('a[aria-label="Settings"]')).not.toBeNull();
+  });
+
+  it("shows a section without a label as pages only", async () => {
+    settingsSections.push({ pages: [] });
+    try {
+      const { element } = await render("/settings");
+      const unlabelled = element.querySelectorAll("section")[settingsSections.length - 1];
+      expect(unlabelled.querySelector("h2")).toBeNull();
+      expect(unlabelled.hasAttribute("aria-label")).toBe(false);
+    } finally {
+      settingsSections.pop();
+    }
   });
 
   it("keeps only the icon rail while collapsed", async () => {

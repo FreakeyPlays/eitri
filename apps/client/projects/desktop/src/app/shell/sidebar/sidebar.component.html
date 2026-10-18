@@ -1,8 +1,12 @@
 @if (settings()) {
   <div hlmSidebarContent class="gap-1 p-1">
-    @for (section of settingsSections; track section.label) {
-      <section class="flex flex-col gap-1" [attr.aria-label]="section.label">
-        @if (expanded()) {
+    @for (section of settingsSections; track $index) {
+      <section
+        class="flex flex-col gap-1"
+        [class.pt-3]="expanded() && !section.label"
+        [attr.aria-label]="section.label"
+      >
+        @if (expanded() && section.label) {
           <h2
             class="px-2.5 pt-3 pb-1 text-xs font-medium text-muted-foreground transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
           >
