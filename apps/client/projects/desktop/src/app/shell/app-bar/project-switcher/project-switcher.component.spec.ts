@@ -15,6 +15,7 @@ const eitri = {
 describe("ProjectSwitcherComponent", () => {
   const active = signal<Project | null>(null);
   const listed = signal<Project[]>([]);
+  const menuRequested = signal(0);
   /** Complete enough for the switcher and the menu it opens. */
   const projects = {
     active,
@@ -22,6 +23,7 @@ describe("ProjectSwitcherComponent", () => {
     error: signal(null),
     busy: signal(false),
     loaded: signal(true),
+    menuRequested,
     canPickFolder: false,
     load: vi.fn(),
     open: vi.fn(),
@@ -33,6 +35,7 @@ describe("ProjectSwitcherComponent", () => {
   beforeEach(() => {
     active.set(null);
     listed.set([]);
+    menuRequested.set(0);
     projects.open.mockReset();
     TestBed.configureTestingModule({
       providers: [provideSpartanHlm(), { provide: ProjectService, useValue: projects }],
@@ -51,7 +54,7 @@ describe("ProjectSwitcherComponent", () => {
 
   it("names what the user works in", async () => {
     const { fixture, trigger } = await render();
-    expect(trigger().textContent?.trim()).toBe("No project");
+    expect(trigger().textContent?.trim()).toBe("Select Project");
     expect(trigger().getAttribute("aria-label")).toBe("Open a project");
 
     active.set(eitri);
@@ -63,7 +66,7 @@ describe("ProjectSwitcherComponent", () => {
 
     active.set(null);
     await fixture.whenStable();
-    expect(trigger().textContent?.trim()).toBe("No project");
+    expect(trigger().textContent?.trim()).toBe("Select Project");
     expect(trigger().getAttribute("aria-label")).toBe("Open a project");
   });
 
@@ -82,6 +85,17 @@ describe("ProjectSwitcherComponent", () => {
     // A dropdown anchored to the trigger, not a modal over the whole window.
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(menu.textContent).toContain("No projects yet");
+    expect(trigger().getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("drops the menu open when another place asks for it", async () => {
+    const { fixture, trigger } = await render();
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
+
+    menuRequested.set(1);
+    await fixture.whenStable();
+
+    await vi.waitFor(() => expect(document.querySelector("app-project-menu")).not.toBeNull());
     expect(trigger().getAttribute("aria-expanded")).toBe("true");
   });
 

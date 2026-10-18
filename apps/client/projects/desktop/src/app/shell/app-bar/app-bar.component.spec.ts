@@ -9,7 +9,7 @@ describe("AppBarComponent", () => {
   const open = signal<Panel[]>([]);
   const toggle = vi.fn();
   /** Just enough for the project switcher to name "no project"; its own spec covers the rest. */
-  const projects = { active: signal(null), projects: signal([]) };
+  const projects = { active: signal(null), projects: signal([]), menuRequested: signal(0) };
 
   beforeEach(() => {
     toggle.mockReset();

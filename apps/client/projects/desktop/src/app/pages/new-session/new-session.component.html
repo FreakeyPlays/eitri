@@ -1,15 +1,6 @@
 <div class="max-w-sm text-center">
-  <h1 class="text-lg font-medium tracking-tight">
-    {{ projects.active()?.name ?? "No project selected" }}
-  </h1>
-  <p
-    class="mt-2 text-sm text-muted-foreground"
-    [class.truncate]="projects.active() !== null"
-    [attr.title]="projects.active()?.path ?? null"
-  >
-    {{
-      projects.active()?.path ??
-        "Choose a folder to work in from the project menu in the title bar."
-    }}
+  <h1 class="text-lg font-medium tracking-tight">{{ projects.active()?.name }}</h1>
+  <p class="mt-2 truncate text-sm text-muted-foreground" [attr.title]="projects.active()?.path">
+    {{ projects.active()?.path }}
   </p>
 </div>

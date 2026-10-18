@@ -1,12 +1,31 @@
+import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
+import { ProjectService } from "@features/projects/project.service";
 import { provideSpartanHlm } from "@ui/utils";
 import { routes } from "../app.routes";
 import { ShellComponent } from "./shell.component";
 
+const eitri = {
+  id: "ca0dcace-34da-4b44-8364-13ce54a32e44",
+  path: "/git/eitri",
+  name: "eitri",
+  lastOpenedAt: "2026-09-21T10:00:00.000Z",
+};
+
 describe("ShellComponent", () => {
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideSpartanHlm(), provideRouter(routes)] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideSpartanHlm(),
+        provideRouter(routes),
+        // Project pages render only with a project selected.
+        {
+          provide: ProjectService,
+          useValue: { active: signal(eitri), loaded: signal(true), menuRequested: signal(0) },
+        },
+      ],
+    });
   });
 
   async function render(url = "/") {
