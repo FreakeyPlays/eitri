@@ -42,6 +42,7 @@ describe("SidebarComponent", () => {
 
   it("shows the workspace pages, sessions, and settings", async () => {
     const { element, links } = await render("/overview");
+    expect(element.querySelector("hlm-separator")).not.toBeNull();
     expect(links()).toEqual([
       ["Overview", "/overview"],
       ["Manage", "/manage"],
@@ -89,12 +90,20 @@ describe("SidebarComponent", () => {
     }
   });
 
-  it("keeps only the icon rail while collapsed", async () => {
+  it("keeps only the icon rail, with new session set apart, while collapsed", async () => {
     const { fixture, element, links } = await render("/overview");
     sidebarExpanded.set(false);
     await fixture.whenStable();
     expect(element.querySelector('[aria-label="Sessions"]')).toBeNull();
-    expect(links().map(([label]) => label)).toEqual(["Overview", "Manage", "Wiki", "Settings"]);
-    expect(element.querySelectorAll("a ng-icon svg")).toHaveLength(4);
+    expect(element.querySelector("hlm-separator")).not.toBeNull();
+    expect(links()).toContainEqual(["New session", "/sessions/new"]);
+    expect(links().map(([label]) => label)).toEqual([
+      "Overview",
+      "Manage",
+      "Wiki",
+      "New session",
+      "Settings",
+    ]);
+    expect(element.querySelectorAll("a ng-icon svg")).toHaveLength(5);
   });
 });

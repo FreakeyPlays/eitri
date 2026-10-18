@@ -12,6 +12,7 @@ import {
   lucideSquareKanban,
 } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
+import { HlmSeparator } from "@ui/separator";
 import { HlmSidebarContent, HlmSidebarFooter, HlmSidebarHeader } from "@ui/sidebar";
 import { settingsSections } from "@pages/settings/settings";
 import { LayoutService } from "@shell/layout/layout.service";
@@ -34,6 +35,7 @@ const inSettings = (url: string) => url === "/settings" || url.startsWith("/sett
     HlmSidebarContent,
     HlmSidebarFooter,
     HlmButton,
+    HlmSeparator,
     NgIcon,
     RouterLink,
     SidebarItemComponent,
