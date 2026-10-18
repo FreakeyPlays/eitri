@@ -13,7 +13,7 @@
     <span class="truncate">{{ name() }}</span>
     <ng-icon name="lucideChevronsUpDown" size="14" aria-hidden="true" />
   </button>
-  <div *brnPopoverContent class="w-80 rounded-xl border shadow-md">
+  <div *brnPopoverContent class="rounded-xl border shadow-md">
     <app-project-menu (chosen)="menu.close()" />
   </div>
 </brn-popover>

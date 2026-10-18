@@ -219,7 +219,7 @@ describe("ProjectMenuComponent", () => {
     const browser = fixture.debugElement.query(
       (node) => node.componentInstance instanceof FolderBrowserComponent,
     ).componentInstance as FolderBrowserComponent;
-    expect(element.textContent).toContain("Select this folder");
+    expect(element.querySelector("input[name=folder-path]")).not.toBeNull();
     browser.selected.emit("/srv/work");
 
     await vi.waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("/srv/work"));

@@ -22,7 +22,7 @@ import { ProjectSettingsComponent } from "../project-settings/project-settings.c
   imports: [FolderBrowserComponent, HlmButton, NgIcon],
   providers: [provideIcons({ lucideSettings })],
   templateUrl: "./project-menu.component.html",
-  host: { class: "block" },
+  host: { "[class]": "browsing() ? 'block w-96' : 'block w-80'" },
 })
 export class ProjectMenuComponent {
   readonly chosen = output<void>();
