@@ -22,7 +22,7 @@ describe("ShellComponent", () => {
         // Project pages render only with a project selected.
         {
           provide: ProjectService,
-          useValue: { active: signal(eitri), loaded: signal(true), menuRequested: signal(0) },
+          useValue: { active: signal(eitri), loaded: signal(true) },
         },
       ],
     });
@@ -40,20 +40,6 @@ describe("ShellComponent", () => {
     };
     return { fixture, element, button };
   }
-
-  it.each([{ metaKey: true }, { ctrlKey: true }])(
-    "leaves platform shortcuts alone (%j)",
-    async (modifier) => {
-      const { fixture } = await render();
-      const event = new KeyboardEvent("keydown", { key: "k", cancelable: true, ...modifier });
-
-      document.dispatchEvent(event);
-      await fixture.whenStable();
-
-      expect(event.defaultPrevented).toBe(false);
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
-    },
-  );
 
   it("opens the overview with the sidebar and placeholder panels", async () => {
     const { element } = await render();
@@ -181,6 +167,26 @@ describe("ShellComponent", () => {
       pointer("pointerleave");
       pointer("pointermove", "touch");
       await settle(500);
+      expect(sidebar.style.width).toBe("42px");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels a peek that is still waiting on Escape", async () => {
+    const { fixture, element, button } = await render();
+    button("Collapse sidebar").click();
+    await fixture.whenStable();
+    vi.useFakeTimers();
+    try {
+      const sidebar = element.querySelector<HTMLElement>("#shell-sidebar")!;
+      sidebar.parentElement!.dispatchEvent(
+        new PointerEvent("pointermove", { pointerType: "mouse" }),
+      );
+      vi.advanceTimersByTime(200);
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      vi.advanceTimersByTime(500);
+      fixture.detectChanges();
       expect(sidebar.style.width).toBe("42px");
     } finally {
       vi.useRealTimers();

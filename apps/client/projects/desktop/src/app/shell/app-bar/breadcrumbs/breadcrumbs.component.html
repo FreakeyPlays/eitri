@@ -6,10 +6,10 @@
         variant="ghost"
         size="icon-sm"
         class="aria-[current=page]:bg-accent"
-        routerLink="/overview"
+        [routerLink]="'/' + home.path"
         routerLinkActive
         ariaCurrentWhenActive="page"
-        aria-label="Overview"
+        [attr.aria-label]="home.label"
       >
         <ng-icon name="lucideHome" size="16" aria-hidden="true" />
       </a>

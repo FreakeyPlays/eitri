@@ -5,27 +5,25 @@
   <!-- Sidebar: fixed width, collapses to the icon rail; resting on the rail peeks it over the main panel -->
   <div
     class="relative shrink-0 transition-[width] duration-200 ease-out motion-reduce:transition-none"
-    [style.width.px]="layout.isOpen('sidebar') ? 240 : 42"
+    [style.width.px]="layout.isOpen('sidebar') ? sidebarWidth.open : sidebarWidth.rail"
     (pointermove)="rest($event)"
     (pointerdown)="press()"
     (pointerleave)="leave()"
   >
-    <section
+    <div
       id="shell-sidebar"
       data-app-chrome
       class="absolute inset-y-0 left-0 z-20 overflow-hidden rounded-lg border bg-sidebar transition-[width,box-shadow] duration-200 ease-out motion-reduce:transition-none"
       [class.shadow-lg]="layout.peeking()"
-      [style.width.px]="layout.sidebarShown() ? 240 : 42"
-      aria-label="Sidebar"
+      [style.width.px]="layout.sidebarShown() ? sidebarWidth.open : sidebarWidth.rail"
     >
-      <nav
+      <div
         class="group/rail flex h-full min-h-0 select-none flex-col"
-        aria-label="Workspace navigation"
         [attr.data-expanded]="layout.sidebarShown()"
       >
         <app-sidebar />
-      </nav>
-    </section>
+      </div>
+    </div>
   </div>
   <div
     hlmResizableGroup

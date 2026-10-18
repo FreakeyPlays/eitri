@@ -3,13 +3,14 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   signal,
+  untracked,
 } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
-import { filter } from "rxjs";
+import { RouterOutlet } from "@angular/router";
 import { HlmResizableImports } from "@ui/resizable";
+import { injectRouteTrail } from "@shell/route-trail";
 import { AppBarComponent } from "./app-bar/app-bar.component";
 import { EmptyPanelComponent } from "./empty-panel/empty-panel.component";
 import { LayoutService } from "./layout/layout.service";
@@ -28,6 +29,9 @@ const split = (open: boolean, ratio: number) =>
 const peekDelay = 350;
 const peekDelayAfterClick = 1200;
 const unpeekDelay = 150;
+
+/** The sidebar's width in pixels while expanded, and as the collapsed icon rail. */
+const sidebarWidth = { open: 240, rail: 42 } as const;
 
 /**
  * The window around every page: app bar, sidebar, and resizable panels.
@@ -51,6 +55,7 @@ const unpeekDelay = 150;
 })
 export class ShellComponent {
   protected readonly layout = inject(LayoutService);
+  protected readonly sidebarWidth = sidebarWidth;
   protected readonly right = computed(() =>
     split(this.layout.isOpen("right"), this.layout.shown().rightRatio),
   );
@@ -65,12 +70,12 @@ export class ShellComponent {
   private peekWait = peekDelay;
 
   constructor() {
-    inject(Router)
-      .events.pipe(
-        filter((event) => event instanceof NavigationEnd),
-        takeUntilDestroyed(),
-      )
-      .subscribe(() => this.unpeek());
+    const trail = injectRouteTrail();
+    // A new page closes the peek.
+    effect(() => {
+      trail();
+      untracked(() => this.unpeek());
+    });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.peekTimer));
   }
 
@@ -81,7 +86,7 @@ export class ShellComponent {
     if (this.layout.isOpen("sidebar") || this.layout.peeking()) return;
     this.peekTimer = setTimeout(() => {
       this.peekWait = peekDelay;
-      this.layout.peeking.set(true);
+      if (!this.layout.isOpen("sidebar")) this.layout.peeking.set(true);
     }, this.peekWait);
   }
 
@@ -99,9 +104,10 @@ export class ShellComponent {
     }
   }
 
+  /** Closes the peek, or cancels one still waiting to open. */
   protected unpeek() {
-    if (!this.layout.peeking()) return;
     clearTimeout(this.peekTimer);
+    if (!this.layout.peeking()) return;
     this.peekArmed = false;
     this.layout.peeking.set(false);
   }

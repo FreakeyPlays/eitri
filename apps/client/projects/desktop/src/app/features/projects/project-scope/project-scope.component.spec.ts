@@ -4,6 +4,7 @@ import { provideRouter, Router } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
 import type { Project } from "@eitri/contracts/project";
 import { ProjectService } from "@features/projects/project.service";
+import { LayoutService } from "@shell/layout/layout.service";
 import { ProjectScopeComponent } from "./project-scope.component";
 
 const eitri = {
@@ -20,16 +21,17 @@ describe("ProjectScopeComponent", () => {
   const active = signal<Project | null>(null);
   const loaded = signal(false);
   const error = signal<string | null>(null);
-  const showMenu = vi.fn();
+  const showProjectMenu = vi.fn();
 
   beforeEach(() => {
     active.set(null);
     loaded.set(false);
     error.set(null);
-    showMenu.mockReset();
+    showProjectMenu.mockReset();
     TestBed.configureTestingModule({
       providers: [
-        { provide: ProjectService, useValue: { active, loaded, error, showMenu } },
+        { provide: ProjectService, useValue: { active, loaded, error } },
+        { provide: LayoutService, useValue: { showProjectMenu } },
         provideRouter([
           {
             path: "",
@@ -61,7 +63,7 @@ describe("ProjectScopeComponent", () => {
   it("introduces projects when none is selected", async () => {
     loaded.set(true);
     const { intro, page } = await render();
-    expect(intro()?.textContent?.trim()).toBe("No project selected");
+    expect(intro()?.textContent?.trim()).toBe("Select your Project");
     expect(page()).toBeNull();
   });
 
@@ -69,7 +71,7 @@ describe("ProjectScopeComponent", () => {
     loaded.set(true);
     const { choose } = await render();
     choose()!.click();
-    expect(showMenu).toHaveBeenCalledOnce();
+    expect(showProjectMenu).toHaveBeenCalledOnce();
   });
 
   it("still introduces projects when the first read failed", async () => {

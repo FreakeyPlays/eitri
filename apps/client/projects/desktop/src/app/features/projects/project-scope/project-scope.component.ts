@@ -4,6 +4,7 @@ import { HlmButton } from "@ui/button";
 import { NgIcon, provideIcons } from "@ng-icons/core";
 import { lucideFolderOpen } from "@ng-icons/lucide";
 import { ProjectService } from "@features/projects/project.service";
+import { LayoutService } from "@shell/layout/layout.service";
 
 /**
  * Parent route of every page that works inside a project. Renders the page once a
@@ -21,4 +22,5 @@ import { ProjectService } from "@features/projects/project.service";
 })
 export class ProjectScopeComponent {
   protected readonly projects = inject(ProjectService);
+  protected readonly layout = inject(LayoutService);
 }

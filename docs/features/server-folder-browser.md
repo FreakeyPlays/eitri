@@ -65,3 +65,12 @@ The browser component owns its navigation state and the newest-navigation guard.
 
 Folders are listed by the `folders.browse` RPC instead of `GET /api/folders`. The
 listing no longer carries `parentPath`: no client navigated upwards with it.
+
+## Revision — 2026-10-18
+
+The browser works through a highlight. A filter highlights its best match, the
+arrows move the highlight, and Enter steps into the highlighted folder; with
+nothing highlighted, or with ⌘/Ctrl held, Enter opens the folder. The **Up**
+control is a `..` row, and its parent is derived in the client from the typed
+path, so `parentPath` stays unneeded. The path rules live in `folder-path.ts`
+with their own tests, including Windows paths.

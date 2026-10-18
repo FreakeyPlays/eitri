@@ -17,52 +17,19 @@ import { lucideCornerLeftUp, lucideFolder } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
 import { HlmInput } from "@ui/input";
 import { ProjectService } from "@features/projects/project.service";
+import {
+  filterPart,
+  folderPart,
+  matching,
+  parentOf,
+  requestPath,
+  withSeparator,
+} from "./folder-path";
 
 const HOME = "~/";
 
-const separatorIndex = (value: string) => Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\"));
-
-/** The folder a typed path points at: everything up to and including its last separator. */
-const folderPart = (value: string) => value.slice(0, separatorIndex(value) + 1);
-
-/** What the user typed after the last separator, used to filter the listing. */
-const filterPart = (value: string) => value.slice(separatorIndex(value) + 1).trim();
-
-const withSeparator = (path: string) =>
-  separatorIndex(path) === path.length - 1 ? path : path + (path.includes("\\") ? "\\" : "/");
-
-/** Drops the trailing separator the field carries, keeping roots like "/", "~" and "C:\" intact. */
-const requestPath = (folder: string) => {
-  const trimmed = folder.trim().replace(/[\\/]+$/, "");
-  return trimmed === "" || trimmed.endsWith(":") ? folder.trim() : trimmed;
-};
-
-/** The folder above `folder` as the user would type it, or null at a root or at "~/". */
-const parentOf = (folder: string) => {
-  const trimmed = folder.replace(/[\\/]+$/, "");
-  const index = separatorIndex(trimmed);
-  return index < 0 ? null : trimmed.slice(0, index + 1);
-};
-
 const sentence = (cause: unknown) =>
   String(cause instanceof Error ? cause.message : cause).split("\n")[0];
-
-/** Prefix matches first, then names that merely contain the filter. Dot folders only on request. */
-const matching = (directories: FolderListing["directories"], filter: string) => {
-  const needle = filter.toLocaleLowerCase();
-  const visible = needle.startsWith(".")
-    ? directories
-    : directories.filter((directory) => !directory.name.startsWith("."));
-  if (needle === "") return visible;
-  const lower = (name: string) => name.toLocaleLowerCase();
-  return [
-    ...visible.filter((directory) => lower(directory.name).startsWith(needle)),
-    ...visible.filter(
-      (directory) =>
-        !lower(directory.name).startsWith(needle) && lower(directory.name).includes(needle),
-    ),
-  ];
-};
 
 /** One line of the list: the way up, or a folder to step into. `folder` is how the field shows it. */
 interface Row {
@@ -129,9 +96,11 @@ export class FolderBrowserComponent {
   });
 
   /** A filter highlights its best match; otherwise nothing is, and Enter opens the folder. */
-  protected readonly highlighted = linkedSignal(() =>
-    this.filter() === "" ? -1 : this.rows().findIndex((row) => !row.up),
-  );
+  protected readonly highlighted = linkedSignal(() => {
+    // Read rows first, so a new listing resets the highlight even while the filter stays empty.
+    const rows = this.rows();
+    return this.filter() === "" ? -1 : rows.findIndex((row) => !row.up);
+  });
 
   /** What Enter or the button would open: a folder named exactly by the filter, else the one shown. */
   private readonly target = computed(() => {

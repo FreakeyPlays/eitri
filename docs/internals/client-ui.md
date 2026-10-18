@@ -11,37 +11,42 @@ app/
 ├── features/
 │   ├── agents/             sending prompts through the server
 │   └── projects/           project collection and current selection
+│       └── project-scope/  parent route of the project pages, no-project screen
 ├── pages/
-│   ├── page.ts             page declaration and route helpers
-│   ├── new-chat/           start screen and its panels
-│   └── settings/           settings screen and its sidebar
+│   ├── workspace.ts        project pages: routes and sidebar entries
+│   ├── overview/, manage/, wiki/
+│   ├── new-session/
+│   └── settings/           settings.ts: settings pages, routes and sidebar entries
 └── shell/
-    ├── shell.component.*   window and resizable regions
-    ├── app-bar/            window controls and panel toggles
+    ├── shell.component.*   window, sidebar slot and resizable panels
+    ├── app-bar/            window controls, breadcrumbs and panel toggles
+    │   ├── breadcrumbs/
     │   └── project-switcher/
     │       ├── project-switcher.component.*
     │       ├── project-menu/
     │       ├── folder-browser/
     │       └── project-settings/
-    ├── layout/             panel state, persistence and sizing calculations
-    └── sidebar/            reusable sidebar item
+    ├── empty-panel/        placeholder for panels without content yet
+    ├── layout/             panel visibility and sizes
+    ├── route-trail.ts      the route trail as a signal, for shell parts that follow the page
+    └── sidebar/            the sidebar and its items
 ```
 
 Organize UI by the screen or shell element that owns it. `pages/` owns routed
-screens and their panels; `shell/` owns the surrounding window. The project
+screens; `shell/` owns the surrounding window. The project
 switcher and its dialogs live inside the app bar because that is their only home.
 Page-specific UI and behavior stay with their page.
 
 `features/` holds application capabilities and state used independently of a
-particular screen. For example, `ProjectService` serves startup, the new-chat
-page and the project switcher. It owns the collection and selection, while the
+particular screen. For example, `ProjectService` serves startup, the project
+scope and the project switcher. It owns the collection and selection, while the
 switcher owns how the user operates the menu. `core/platform/` isolates web and
 Tauri capabilities; `core/connection/` owns RPC transport. Root `app.*` files assemble these
 pieces. Shared visual primitives live in `apps/client/projects/ui`.
 
 Each application component has its own folder, containing its implementation,
 template and test. A page or shell component can use its existing owning folder;
-additional components get named subfolders, such as `new-chat/chat-sidebar/` and
+additional components get named subfolders, such as `app-bar/breadcrumbs/` and
 `project-switcher/project-menu/`. The root `AppComponent` remains beside `app.*`.
 
 Use `@features/`, `@core/`, `@pages/` and `@shell/` for imports across these
@@ -49,7 +54,7 @@ folders and relative imports within an owning folder. Import the owning file
 directly. A page can use shared state without another page importing its internals;
 shared state and transport should not depend on pages or shell UI.
 
-For example, a composer used only on the chat page belongs to that page. The folder
+For example, a composer used only on the session page belongs to that page. The folder
 browser used only by the project menu belongs to the switcher. Move state or controls
 to a shared home when another owner needs them; do not pre-create folders for
 future workflows or documents. These placement rules are conventions; existing
@@ -57,17 +62,29 @@ dependency checks do not enforce every frontend ownership rule.
 
 ## Pages and panels
 
-A `*.page.ts` declaration names the main and sidebar components and optional right
-and bottom components. Register it in `app.routes.ts` with `pageRoute(...)`.
+Pages are ordinary routes in `app.routes.ts`; each fills the main panel. A route
+names itself in the breadcrumbs with its own `data: { crumb }`. Two lists generate
+both routes and sidebar entries, so adding a page is one entry: `workspacePages`
+in `pages/workspace.ts` and `settingsSections` in `pages/settings/settings.ts`.
+The first workspace page is home; the breadcrumbs' home button stands for it.
 
-The router renders the main component. The shell renders the other regions.
-`LayoutService` follows the active page and remembers panel sizes and visibility.
-Omitting a panel hides it and its toggles without forgetting the user's preference.
-Sizing calculations remain separate from DOM measurement and dragging in the shell.
+Project pages are children of `ProjectScopeComponent`. Without a selected project
+it shows a short introduction in place of the page, without changing the URL,
+and its button opens the project menu through `LayoutService.showProjectMenu()`.
+Choosing a project then shows the page the user asked for. Settings sit outside
+the scope.
 
-Collapsing a panel keeps its component mounted. Navigating to a page that omits
-the panel destroys that component; returning creates it again. Saved layout
-preferences survive, but component-local state does not.
+The shell renders one `SidebarComponent`. It lists the workspace pages, or the
+settings pages while a route with `data: { sidebar: "settings" }` is open.
+`injectRouteTrail()` in `shell/route-trail.ts` gives the sidebar, the breadcrumbs and
+the shell one signal that follows navigation.
+
+The sidebar collapses to an icon rail. Resting the pointer on the rail peeks the
+full sidebar over the main panel without changing the layout; leaving the rail,
+Escape or a navigation closes it. The right panel and the terminal are toggled by
+the user only, never by a page. `LayoutService` holds which panels are open and
+their sizes for as long as the client runs; nothing is saved, so every start
+uses the default layout. Collapsing a panel keeps its component mounted.
 
 ## Runtime services
 

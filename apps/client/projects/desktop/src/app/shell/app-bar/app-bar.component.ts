@@ -49,11 +49,19 @@ export class AppBarComponent {
     });
   }
 
+  /** Follows fullscreen changes; if the window can't tell, the bar keeps its default inset. */
   private async trackWindowControls() {
     const window = getCurrentWindow();
-    const update = async () => this.windowControlsInset.set(!(await window.isFullscreen()));
+    const update = () =>
+      window.isFullscreen().then(
+        (fullscreen) => this.windowControlsInset.set(!fullscreen),
+        () => undefined,
+      );
     await update();
-    const unlisten = await window.onResized(update);
-    this.destroyRef.onDestroy(unlisten);
+    const unlisten = await window.onResized(update).catch(() => undefined);
+    if (!unlisten) return;
+    // The bar may be gone by the time the listener is registered.
+    if (this.destroyRef.destroyed) unlisten();
+    else this.destroyRef.onDestroy(unlisten);
   }
 }

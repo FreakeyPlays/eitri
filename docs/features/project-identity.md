@@ -63,3 +63,10 @@ backend-scoped storage key are gone with it.
 
 Projects are read and changed through the `projects.*` RPCs over the server's
 WebSocket instead of `/api/projects`; payloads and answers are unchanged.
+
+## Revision — 2026-10-18
+
+The all-projects scope is gone. Every start selects the most recently opened
+project, or none when the collection is empty; forgetting the selected project
+selects the first remaining one. Project pages without a selection show an
+introduction instead, see [Client UI](../internals/client-ui.md).

@@ -3,6 +3,7 @@ import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
 import { provideSpartanHlm } from "@ui/utils";
 import { ProjectService } from "@features/projects/project.service";
+import { LayoutService } from "@shell/layout/layout.service";
 import { ProjectSwitcherComponent } from "./project-switcher.component";
 
 const eitri = {
@@ -15,7 +16,6 @@ const eitri = {
 describe("ProjectSwitcherComponent", () => {
   const active = signal<Project | null>(null);
   const listed = signal<Project[]>([]);
-  const menuRequested = signal(0);
   /** Complete enough for the switcher and the menu it opens. */
   const projects = {
     active,
@@ -23,7 +23,6 @@ describe("ProjectSwitcherComponent", () => {
     error: signal(null),
     busy: signal(false),
     loaded: signal(true),
-    menuRequested,
     canPickFolder: false,
     load: vi.fn(),
     open: vi.fn(),
@@ -35,7 +34,6 @@ describe("ProjectSwitcherComponent", () => {
   beforeEach(() => {
     active.set(null);
     listed.set([]);
-    menuRequested.set(0);
     projects.open.mockReset();
     TestBed.configureTestingModule({
       providers: [provideSpartanHlm(), { provide: ProjectService, useValue: projects }],
@@ -55,7 +53,7 @@ describe("ProjectSwitcherComponent", () => {
   it("names what the user works in", async () => {
     const { fixture, trigger } = await render();
     expect(trigger().textContent?.trim()).toBe("Select Project");
-    expect(trigger().getAttribute("aria-label")).toBe("Open a project");
+    expect(trigger().getAttribute("aria-label")).toBe("Select Project");
 
     active.set(eitri);
     listed.set([eitri]);
@@ -67,7 +65,7 @@ describe("ProjectSwitcherComponent", () => {
     active.set(null);
     await fixture.whenStable();
     expect(trigger().textContent?.trim()).toBe("Select Project");
-    expect(trigger().getAttribute("aria-label")).toBe("Open a project");
+    expect(trigger().getAttribute("aria-label")).toBe("Select Project");
   });
 
   it("drops the project menu open beneath the name, without a dialog", async () => {
@@ -92,7 +90,7 @@ describe("ProjectSwitcherComponent", () => {
     const { fixture, trigger } = await render();
     expect(trigger().getAttribute("aria-expanded")).toBe("false");
 
-    menuRequested.set(1);
+    TestBed.inject(LayoutService).showProjectMenu();
     await fixture.whenStable();
 
     await vi.waitFor(() => expect(document.querySelector("app-project-menu")).not.toBeNull());

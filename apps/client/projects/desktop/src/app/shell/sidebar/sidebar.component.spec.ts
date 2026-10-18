@@ -2,9 +2,18 @@ import { Component, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
-import { settingsRoute, settingsSections } from "@pages/settings/settings";
+import { settingsRoute } from "@pages/settings/settings";
 import { LayoutService } from "@shell/layout/layout.service";
 import { SidebarComponent } from "./sidebar.component";
+
+// The real settings pages, followed by a labelled and an unlabelled section to cover both headings.
+vi.mock("@pages/settings/settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pages/settings/settings")>();
+  return {
+    ...actual,
+    settingsSections: [...actual.settingsSections, { label: "Agents", pages: [] }, { pages: [] }],
+  };
+});
 
 @Component({ template: "" })
 class BlankComponent {}
@@ -42,7 +51,8 @@ describe("SidebarComponent", () => {
 
   it("shows the workspace pages, sessions, and settings", async () => {
     const { element, links } = await render("/overview");
-    expect(element.querySelector("hlm-separator")).not.toBeNull();
+    expect(element.getAttribute("role")).toBe("navigation");
+    expect(element.getAttribute("aria-label")).toBe("Workspace");
     expect(links()).toEqual([
       ["Overview", "/overview"],
       ["Manage", "/manage"],
@@ -68,16 +78,13 @@ describe("SidebarComponent", () => {
 
   it("swaps to the settings pages and back with the URL", async () => {
     const { fixture, element, links } = await render("/settings");
+    expect(element.getAttribute("aria-label")).toBe("Settings");
     expect(links()).toEqual([
       ["Appearance", "/settings/appearance"],
       ["Preferences", "/settings/preferences"],
       ["Providers", "/settings/providers"],
       ["Skills", "/settings/skills"],
       ["Back", "/"],
-    ]);
-    expect([...element.querySelectorAll("section h2")].map((h) => h.textContent?.trim())).toEqual([
-      "General",
-      "Agents",
     ]);
     expect(element.querySelector('a[aria-current="page"]')?.getAttribute("aria-label")).toBe(
       "Appearance",
@@ -86,30 +93,25 @@ describe("SidebarComponent", () => {
     element.querySelector<HTMLAnchorElement>('a[aria-label="Back"]')!.click();
     await fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe("/overview");
+    expect(element.getAttribute("aria-label")).toBe("Workspace");
     expect(element.querySelector('a[aria-label="Settings"]')).not.toBeNull();
   });
 
-  it("shows a section without a label as pages only", async () => {
-    settingsSections.push({ pages: [] });
-    try {
-      const { element } = await render("/settings");
-      const unlabelled = element.querySelectorAll("section")[settingsSections.length - 1];
-      expect(unlabelled.querySelector("h2")).toBeNull();
-      expect(unlabelled.hasAttribute("aria-label")).toBe(false);
-      expect(unlabelled.classList).toContain("pt-3");
-    } finally {
-      settingsSections.pop();
-    }
-  });
+  it("heads only labelled sections, keeping the gap between sections either way", async () => {
+    const { element } = await render("/settings");
+    const [first, labelled, unlabelled] = element.querySelectorAll("section");
 
-  it("aligns an unlabelled first section with the workspace pages", async () => {
-    settingsSections.unshift({ pages: [] });
-    try {
-      const { element } = await render("/settings");
-      expect(element.querySelector("section")!.classList).not.toContain("pt-3");
-    } finally {
-      settingsSections.shift();
-    }
+    expect(first.querySelector("h2")).toBeNull();
+    expect(first.hasAttribute("aria-label")).toBe(false);
+    expect(first.classList).not.toContain("pt-3");
+
+    expect(labelled.querySelector("h2")?.textContent?.trim()).toBe("Agents");
+    expect(labelled.getAttribute("aria-label")).toBe("Agents");
+    expect(labelled.classList).not.toContain("pt-3");
+
+    expect(unlabelled.querySelector("h2")).toBeNull();
+    expect(unlabelled.hasAttribute("aria-label")).toBe(false);
+    expect(unlabelled.classList).toContain("pt-3");
   });
 
   it("keeps only the icon rail, with new session set apart, while collapsed", async () => {
@@ -117,8 +119,6 @@ describe("SidebarComponent", () => {
     sidebarExpanded.set(false);
     await fixture.whenStable();
     expect(element.querySelector('[aria-label="Sessions"]')).toBeNull();
-    expect(element.querySelector("hlm-separator")).not.toBeNull();
-    expect(links()).toContainEqual(["New session", "/sessions/new"]);
     expect(links().map(([label]) => label)).toEqual([
       "Overview",
       "Manage",

@@ -37,6 +37,15 @@ describe("LayoutService", () => {
     expect(layout.peeking()).toBe(false);
   });
 
+  it("asks for the project menu once per request, without replaying earlier ones", () => {
+    const layout = TestBed.inject(LayoutService);
+    layout.showProjectMenu();
+    const requests = vi.fn();
+    layout.projectMenuRequested.subscribe(requests);
+    layout.showProjectMenu();
+    expect(requests).toHaveBeenCalledOnce();
+  });
+
   it("starts from the default layout", () => {
     expect(TestBed.inject(LayoutService).shown()).toEqual(defaultLayout);
   });

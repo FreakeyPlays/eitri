@@ -1,4 +1,5 @@
 import { signal } from "@angular/core";
+import { NEVER } from "rxjs";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
@@ -10,7 +11,7 @@ describe("AppBarComponent", () => {
   const open = signal<Panel[]>([]);
   const toggle = vi.fn();
   /** Just enough for the project switcher to name "no project"; its own spec covers the rest. */
-  const projects = { active: signal(null), projects: signal([]), menuRequested: signal(0) };
+  const projects = { active: signal(null), projects: signal([]) };
 
   beforeEach(() => {
     toggle.mockReset();
@@ -24,6 +25,7 @@ describe("AppBarComponent", () => {
           useValue: {
             isOpen: (panel: Panel) => open().includes(panel),
             toggle,
+            projectMenuRequested: NEVER,
           },
         },
       ],
@@ -43,7 +45,7 @@ describe("AppBarComponent", () => {
   it("always offers the terminal and right panel toggles", async () => {
     expect((await render()).labels()).toEqual([
       "Expand sidebar",
-      "Open a project",
+      "Select Project",
       "Show terminal",
       "Show right panel",
     ]);
@@ -74,12 +76,12 @@ describe("AppBarComponent", () => {
     const { element, labels } = await render(["bottom"]);
     expect(labels()).toEqual([
       "Expand sidebar",
-      "Open a project",
+      "Select Project",
       "Hide terminal",
       "Show right panel",
     ]);
     const buttons = [...element.querySelectorAll("button")].filter(
-      (button) => button.getAttribute("aria-label") !== "Open a project",
+      (button) => button.getAttribute("aria-label") !== "Select Project",
     );
     expect(buttons[1].getAttribute("aria-expanded")).toBe("true");
     for (const button of buttons) button.click();

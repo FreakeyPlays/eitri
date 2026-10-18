@@ -28,8 +28,8 @@
   </div>
 } @else {
   <div hlmSidebarHeader class="gap-1 p-1">
-    @for (page of workspacePages; track page.link) {
-      <app-sidebar-item [label]="page.label" [link]="page.link">
+    @for (page of workspacePages; track page.path) {
+      <app-sidebar-item [label]="page.label" [link]="'/' + page.path">
         <ng-icon [svg]="page.icon" class="shrink-0" size="18" aria-hidden="true" />
       </app-sidebar-item>
     }

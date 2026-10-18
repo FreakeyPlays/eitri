@@ -152,6 +152,22 @@ describe("FolderBrowserComponent", () => {
     expect(highlighted()).toBeUndefined();
   });
 
+  it("drops an arrow highlight when stepping into a folder without a filter", async () => {
+    const { field, press, highlighted, settle } = await render();
+
+    press("ArrowDown");
+    press("ArrowDown");
+    press("ArrowDown");
+    expect(highlighted()).toBe("games");
+    listFolders.mockResolvedValue({ path: "/home/me/games", directories: [], truncated: false });
+    press("Enter");
+    await settle();
+
+    expect(field.value).toBe("~/games/");
+    expect(highlighted()).toBeUndefined();
+    expect(field.hasAttribute("aria-activedescendant")).toBe(false);
+  });
+
   it("opens the folder shown when Enter has nothing highlighted", async () => {
     const { press, selected } = await render();
 
@@ -226,6 +242,10 @@ describe("FolderBrowserComponent", () => {
       expect(element.querySelector('[role="alert"]')?.textContent).toContain("does not exist");
     });
     expect(button("Open").disabled).toBe(true);
+    // The list is gone, so the field no longer points at it.
+    const field = element.querySelector("input[name=folder-path]")!;
+    expect(field.getAttribute("aria-expanded")).toBe("false");
+    expect(field.hasAttribute("aria-controls")).toBe(false);
   });
 
   it("explains empty folders, no matches and truncated listings", async () => {

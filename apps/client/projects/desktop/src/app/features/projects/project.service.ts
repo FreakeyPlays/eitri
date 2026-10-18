@@ -30,7 +30,6 @@ export class ProjectService {
   private readonly pending = signal(false);
   private readonly failure = signal<string | null>(null);
   private readonly listed = signal(false);
-  private readonly menuRequests = signal(0);
   private started: Promise<void> | undefined;
 
   readonly projects = computed(() => this.known().projects);
@@ -44,13 +43,6 @@ export class ProjectService {
   readonly loaded = this.listed.asReadonly();
   /** Desktop has a native folder picker; web browses the server's folders instead. */
   readonly canPickFolder = this.client.selectDirectory !== null;
-  /** Counts `showMenu` calls; the title bar's project switcher opens on each. */
-  readonly menuRequested = this.menuRequests.asReadonly();
-
-  /** Opens the title bar's project menu, for places that point the user to it. */
-  showMenu() {
-    this.menuRequests.update((count) => count + 1);
-  }
 
   /** Reads the collection once and selects the most recently opened project. */
   load(): Promise<void> {

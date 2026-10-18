@@ -13,6 +13,7 @@ const eitri = {
   name: "eitri",
   lastOpenedAt: "2026-09-21T10:00:00.000Z",
 };
+
 const other = {
   id: "f035a77d-24b4-41c5-a2dc-93b56425d53a",
   path: "/git/other",
@@ -116,7 +117,6 @@ describe("ProjectMenuComponent", () => {
       active.set(collection[0]);
       const { element, items } = await render();
 
-      expect(element.textContent).not.toContain("All projects");
       expect(element.querySelectorAll('ul[aria-label="Projects"] > li')).toHaveLength(
         collection.length,
       );

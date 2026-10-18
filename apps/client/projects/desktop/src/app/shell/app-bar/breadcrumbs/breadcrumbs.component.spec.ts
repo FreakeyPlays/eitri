@@ -11,7 +11,7 @@ class BlankComponent {}
 
 describe("BreadcrumbsComponent", () => {
   /** Just enough for the project switcher to name "no project"; its own spec covers the rest. */
-  const projects = { active: signal(null), projects: signal([]), menuRequested: signal(0) };
+  const projects = { active: signal(null), projects: signal([]) };
 
   beforeEach(() => {
     TestBed.configureTestingModule({

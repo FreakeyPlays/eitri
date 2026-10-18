@@ -1,34 +1,26 @@
-import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { NavigationEnd, Router, RouterLink } from "@angular/router";
-import { filter, map } from "rxjs";
+import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
+import { RouterLink } from "@angular/router";
 import { NgIcon } from "@ng-icons/core";
 import {
   lucideArrowLeft,
-  lucideBookOpen,
-  lucideHome,
   lucideListFilter,
   lucidePlus,
   lucideSearch,
   lucideSettings,
-  lucideSquareKanban,
 } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
 import { HlmInputGroupImports } from "@ui/input-group";
 import { HlmSidebarContent, HlmSidebarFooter, HlmSidebarHeader } from "@ui/sidebar";
+import { injectRouteTrail } from "@shell/route-trail";
 import { settingsSections } from "@pages/settings/settings";
+import { workspacePages } from "@pages/workspace";
 import { LayoutService } from "@shell/layout/layout.service";
 import { SidebarItemComponent } from "./sidebar-item/sidebar-item.component";
 
-const workspacePages = [
-  { link: "/overview", label: "Overview", icon: lucideHome },
-  { link: "/manage", label: "Manage", icon: lucideSquareKanban },
-  { link: "/wiki", label: "Wiki", icon: lucideBookOpen },
-];
-
-const inSettings = (url: string) => url === "/settings" || url.startsWith("/settings/");
-
-/** The shell's only sidebar: workspace navigation, or the settings pages while one is open. */
+/**
+ * The shell's only sidebar: workspace navigation, or the settings pages while a route
+ * with `data: { sidebar: "settings" }` is open.
+ */
 @Component({
   selector: "app-sidebar",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,18 +35,17 @@ const inSettings = (url: string) => url === "/settings" || url.startsWith("/sett
     SidebarItemComponent,
   ],
   templateUrl: "./sidebar.component.html",
-  host: { class: "flex min-h-0 flex-1 flex-col" },
+  host: {
+    class: "flex min-h-0 flex-1 flex-col",
+    role: "navigation",
+    "[attr.aria-label]": "settings() ? 'Settings' : 'Workspace'",
+  },
 })
 export class SidebarComponent {
-  private readonly router = inject(Router);
-  private readonly layout = inject(LayoutService);
-  protected readonly expanded = this.layout.sidebarShown;
-  protected readonly settings = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map((event) => inSettings(event.urlAfterRedirects)),
-    ),
-    { initialValue: inSettings(this.router.url) },
+  private readonly trail = injectRouteTrail();
+  protected readonly expanded = inject(LayoutService).sidebarShown;
+  protected readonly settings = computed(() =>
+    this.trail().some((route) => route.routeConfig?.data?.["sidebar"] === "settings"),
   );
   protected readonly workspacePages = workspacePages;
   protected readonly settingsSections = settingsSections;
