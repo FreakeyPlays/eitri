@@ -35,26 +35,30 @@
     }
   </div>
   <div hlmSidebarContent>
-    <hlm-separator
-      decorative
-      class="mx-auto my-1 w-5! group-data-[expanded=true]/rail:mx-3 group-data-[expanded=true]/rail:w-auto!"
-    />
     @if (expanded()) {
       <section
         class="px-2 pt-2 transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
         aria-label="Sessions"
       >
-        <h2 class="px-2.5 pb-1 text-xs font-medium text-muted-foreground">Sessions</h2>
-        <a
-          hlmBtn
-          variant="ghost"
-          size="sm"
-          class="w-full justify-start gap-2 px-2.5 text-muted-foreground"
-          routerLink="/sessions/new"
-        >
-          <ng-icon [svg]="icons.lucidePlus" class="shrink-0" size="16" aria-hidden="true" />
-          New session
-        </a>
+        <div class="flex items-center gap-1">
+          <div hlmInputGroup class="flex-1">
+            <div hlmInputGroupAddon>
+              <ng-icon [svg]="icons.lucideSearch" aria-hidden="true" />
+            </div>
+            <input
+              hlmInputGroupInput
+              type="search"
+              placeholder="Search"
+              aria-label="Search sessions"
+            />
+          </div>
+          <button hlmBtn variant="ghost" size="icon" type="button" aria-label="Filter sessions">
+            <ng-icon [svg]="icons.lucideListFilter" aria-hidden="true" />
+          </button>
+          <a hlmBtn variant="ghost" size="icon" routerLink="/sessions/new" aria-label="New session">
+            <ng-icon [svg]="icons.lucidePlus" aria-hidden="true" />
+          </a>
+        </div>
       </section>
     } @else {
       <div class="p-1">

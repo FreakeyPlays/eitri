@@ -50,7 +50,7 @@ describe("AppBarComponent", () => {
   });
 
   it.each([
-    { opened: [], sidebar: "lucidePanelLeftOpen", right: "lucidePanelRightOpen" },
+    { opened: [], sidebar: "lucidePanelLeft", right: "lucidePanelRight" },
     {
       opened: ["sidebar", "right"] satisfies Panel[],
       sidebar: "lucidePanelLeftClose",

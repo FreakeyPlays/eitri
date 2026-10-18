@@ -7,11 +7,14 @@ import {
   lucideArrowLeft,
   lucideBookOpen,
   lucideHome,
+  lucideListFilter,
   lucidePlus,
+  lucideSearch,
   lucideSettings,
   lucideSquareKanban,
 } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
+import { HlmInputGroupImports } from "@ui/input-group";
 import { HlmSeparator } from "@ui/separator";
 import { HlmSidebarContent, HlmSidebarFooter, HlmSidebarHeader } from "@ui/sidebar";
 import { settingsSections } from "@pages/settings/settings";
@@ -35,6 +38,7 @@ const inSettings = (url: string) => url === "/settings" || url.startsWith("/sett
     HlmSidebarContent,
     HlmSidebarFooter,
     HlmButton,
+    HlmInputGroupImports,
     HlmSeparator,
     NgIcon,
     RouterLink,
@@ -56,5 +60,11 @@ export class SidebarComponent {
   );
   protected readonly workspacePages = workspacePages;
   protected readonly settingsSections = settingsSections;
-  protected readonly icons = { lucideArrowLeft, lucidePlus, lucideSettings };
+  protected readonly icons = {
+    lucideArrowLeft,
+    lucideListFilter,
+    lucidePlus,
+    lucideSearch,
+    lucideSettings,
+  };
 }

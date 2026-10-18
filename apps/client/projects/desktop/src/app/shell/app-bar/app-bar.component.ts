@@ -12,9 +12,9 @@ import { HlmButton } from "@ui/button";
 import { NgIcon, provideIcons } from "@ng-icons/core";
 import {
   lucidePanelLeftClose,
-  lucidePanelLeftOpen,
+  lucidePanelLeft,
   lucidePanelRightClose,
-  lucidePanelRightOpen,
+  lucidePanelRight,
   lucideSquareTerminal,
 } from "@ng-icons/lucide";
 import { LayoutService } from "@shell/layout/layout.service";
@@ -28,9 +28,9 @@ import { BreadcrumbsComponent } from "./breadcrumbs/breadcrumbs.component";
   providers: [
     provideIcons({
       lucidePanelLeftClose,
-      lucidePanelLeftOpen,
+      lucidePanelLeft,
       lucidePanelRightClose,
-      lucidePanelRightOpen,
+      lucidePanelRight,
       lucideSquareTerminal,
     }),
   ],

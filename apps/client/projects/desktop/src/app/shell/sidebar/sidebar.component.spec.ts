@@ -55,6 +55,17 @@ describe("SidebarComponent", () => {
     );
   });
 
+  it("puts search and filter beside new session in the sessions toolbar", async () => {
+    const { element } = await render("/overview");
+    const sessions = element.querySelector('[aria-label="Sessions"]')!;
+    expect(sessions.querySelector("h2")).toBeNull();
+    expect(sessions.querySelector('input[aria-label="Search sessions"]')).not.toBeNull();
+    expect(sessions.querySelector('button[aria-label="Filter sessions"]')).not.toBeNull();
+    expect(sessions.querySelector('a[aria-label="New session"]')?.getAttribute("href")).toBe(
+      "/sessions/new",
+    );
+  });
+
   it("swaps to the settings pages and back with the URL", async () => {
     const { fixture, element, links } = await render("/settings");
     expect(links()).toEqual([
