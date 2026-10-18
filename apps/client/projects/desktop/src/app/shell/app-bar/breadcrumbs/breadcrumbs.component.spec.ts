@@ -34,6 +34,9 @@ describe("BreadcrumbsComponent", () => {
     const element: HTMLElement = fixture.nativeElement;
     const trail = () =>
       [...element.querySelectorAll("li")].map((item) => {
+        const home = item.querySelector("a");
+        if (home)
+          return [home.getAttribute("aria-label"), home.getAttribute("aria-current") ?? "home"];
         const button = item.querySelector("button");
         if (button) return [button.textContent?.trim(), "switcher"];
         const crumb = item.querySelector("span:not([aria-hidden])")!;
@@ -42,30 +45,38 @@ describe("BreadcrumbsComponent", () => {
     return { fixture, trail };
   }
 
-  it("shows only the project switcher on unnamed pages", async () => {
+  it("marks home as the current page on the overview", async () => {
     const { trail } = await render("/overview");
-    expect(trail()).toEqual([["Select Project", "switcher"]]);
+    expect(trail()).toEqual([
+      ["Overview", "page"],
+      ["Select Project", "switcher"],
+    ]);
   });
 
   it("names the open page after the project switcher", async () => {
     const { trail } = await render("/wiki");
     expect(trail()).toEqual([
+      ["Overview", "home"],
       ["Select Project", "switcher"],
       ["Wiki", "page"],
     ]);
   });
 
-  it("names nested pages without links and follows navigation", async () => {
+  it("names nested pages without links and follows navigation home", async () => {
     const { fixture, trail } = await render("/settings/appearance");
     expect(trail()).toEqual([
+      ["Overview", "home"],
       ["Select Project", "switcher"],
       ["Settings", "label"],
       ["Appearance", "page"],
     ]);
 
-    await TestBed.inject(Router).navigateByUrl("/overview");
+    fixture.nativeElement.querySelector('a[aria-label="Overview"]').click();
     await fixture.whenStable();
-    expect(trail()).toEqual([["Select Project", "switcher"]]);
-    expect(fixture.nativeElement.querySelector("a")).toBeNull();
+    expect(TestBed.inject(Router).url).toBe("/overview");
+    expect(trail()).toEqual([
+      ["Overview", "page"],
+      ["Select Project", "switcher"],
+    ]);
   });
 });

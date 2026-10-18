@@ -1,5 +1,6 @@
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import { provideRouter } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
 import { ProjectService } from "@features/projects/project.service";
 import { AppBarComponent } from "./app-bar.component";
@@ -16,6 +17,7 @@ describe("AppBarComponent", () => {
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
+        provideRouter([]),
         { provide: ProjectService, useValue: projects },
         {
           provide: LayoutService,

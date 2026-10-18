@@ -1,7 +1,16 @@
 import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
-import { type ActivatedRouteSnapshot, NavigationEnd, Router } from "@angular/router";
+import {
+  type ActivatedRouteSnapshot,
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+} from "@angular/router";
 import { filter, map } from "rxjs";
+import { NgIcon, provideIcons } from "@ng-icons/core";
+import { lucideHome } from "@ng-icons/lucide";
+import { HlmButton } from "@ui/button";
 import { ProjectSwitcherComponent } from "../project-switcher/project-switcher.component";
 
 /** One crumb per activated route that names itself with its own `data: { crumb: "…" }`, outermost first. */
@@ -15,11 +24,12 @@ function crumbsOf(router: Router): string[] {
   return crumbs;
 }
 
-/** Where the user is: the project switcher, then the trail of the open page. */
+/** Where the user is: home to the overview, the project switcher, then the trail of the open page. */
 @Component({
   selector: "app-breadcrumbs",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProjectSwitcherComponent],
+  imports: [HlmButton, NgIcon, ProjectSwitcherComponent, RouterLink, RouterLinkActive],
+  providers: [provideIcons({ lucideHome })],
   templateUrl: "./breadcrumbs.component.html",
   host: { class: "contents" },
 })
