@@ -1,10 +1,17 @@
 import type { Type } from "@angular/core";
 import type { Route } from "@angular/router";
-import { lucideBot, lucideNotebook, lucidePalette, lucideWrench } from "@ng-icons/lucide";
+import {
+  lucideBot,
+  lucideFileQuestion,
+  lucideNotebook,
+  lucidePalette,
+  lucideWrench,
+} from "@ng-icons/lucide";
 import { AppearanceComponent } from "./appearance/appearance.component";
 import { PreferencesComponent } from "./preferences/preferences.component";
 import { ProvidersComponent } from "./providers/providers.component";
 import { SkillsComponent } from "./skills/skills.component";
+import { EmptyPanelComponent } from "@shell/empty-panel/empty-panel.component";
 
 interface SettingsSection {
   /** Heading above the pages in the sidebar; leave it out to show the pages without one. */
@@ -18,7 +25,6 @@ interface SettingsSection {
  */
 export const settingsSections: SettingsSection[] = [
   {
-    label: "General",
     pages: [
       {
         path: "appearance",
@@ -32,13 +38,19 @@ export const settingsSections: SettingsSection[] = [
         icon: lucideWrench,
         component: PreferencesComponent,
       },
+      { path: "providers", label: "Providers", icon: lucideBot, component: ProvidersComponent },
+      { path: "skills", label: "Skills", icon: lucideNotebook, component: SkillsComponent },
     ],
   },
   {
-    label: "Agents",
+    label: "Section",
     pages: [
-      { path: "providers", label: "Providers", icon: lucideBot, component: ProvidersComponent },
-      { path: "skills", label: "Skills", icon: lucideNotebook, component: SkillsComponent },
+      {
+        path: "demo",
+        label: "Section Item",
+        icon: lucideFileQuestion,
+        component: EmptyPanelComponent,
+      },
     ],
   },
 ];

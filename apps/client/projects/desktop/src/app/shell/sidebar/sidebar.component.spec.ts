@@ -85,8 +85,19 @@ describe("SidebarComponent", () => {
       const unlabelled = element.querySelectorAll("section")[settingsSections.length - 1];
       expect(unlabelled.querySelector("h2")).toBeNull();
       expect(unlabelled.hasAttribute("aria-label")).toBe(false);
+      expect(unlabelled.classList).toContain("pt-3");
     } finally {
       settingsSections.pop();
+    }
+  });
+
+  it("aligns an unlabelled first section with the workspace pages", async () => {
+    settingsSections.unshift({ pages: [] });
+    try {
+      const { element } = await render("/settings");
+      expect(element.querySelector("section")!.classList).not.toContain("pt-3");
+    } finally {
+      settingsSections.shift();
     }
   });
 

@@ -3,7 +3,7 @@
     @for (section of settingsSections; track $index) {
       <section
         class="flex flex-col gap-1"
-        [class.pt-3]="expanded() && !section.label"
+        [class.pt-3]="expanded() && !section.label && !$first"
         [attr.aria-label]="section.label"
       >
         @if (expanded() && section.label) {
