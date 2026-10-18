@@ -15,7 +15,6 @@ import {
 } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
 import { HlmInputGroupImports } from "@ui/input-group";
-import { HlmSeparator } from "@ui/separator";
 import { HlmSidebarContent, HlmSidebarFooter, HlmSidebarHeader } from "@ui/sidebar";
 import { settingsSections } from "@pages/settings/settings";
 import { LayoutService } from "@shell/layout/layout.service";
@@ -39,7 +38,6 @@ const inSettings = (url: string) => url === "/settings" || url.startsWith("/sett
     HlmSidebarFooter,
     HlmButton,
     HlmInputGroupImports,
-    HlmSeparator,
     NgIcon,
     RouterLink,
     SidebarItemComponent,
