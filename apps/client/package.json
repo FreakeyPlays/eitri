@@ -57,6 +57,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@tauri-apps/cli": "^2.12.3",
     "@types/bun": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "happy-dom": "catalog:",
