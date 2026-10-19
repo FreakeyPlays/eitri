@@ -1,0 +1,64 @@
+diff --git a/node_modules/@stryker-mutator/vitest-runner/.bun-tag-18e88e914fe08982 b/.bun-tag-18e88e914fe08982
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@stryker-mutator/vitest-runner/.bun-tag-ad4996680bc30fda b/.bun-tag-ad4996680bc30fda
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@stryker-mutator/vitest-runner/dist/src/bun-stack-trace.js b/dist/src/bun-stack-trace.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..0e5c4abbd004f2ec6688bf474c4ce385f47ce6d6
+--- /dev/null
++++ b/dist/src/bun-stack-trace.js
+@@ -0,0 +1,8 @@
++// Bun only: once anything sets Error.prepareStackTrace (Babel, in Stryker's instrumenter, does),
++// Bun formats every captured stack through it, and its native fallback throws for the non-Error
++// objects Vite's bundled follow-redirects passes while this plugin loads. A plain V8-style
++// formatter accepts them.
++if (process.versions.bun) {
++    const errorToString = Function.call.bind(Error.prototype.toString);
++    Error.prepareStackTrace = (error, trace) => [errorToString(error), ...trace.map((frame) => `    at ${frame}`)].join('\n');
++}
+diff --git a/dist/src/index.js b/dist/src/index.js
+index 61a24e123b64650c50e785313698046cd463f5af..9849f2a9768cfe27c027ff890df11e74dca117c3 100644
+--- a/dist/src/index.js
++++ b/dist/src/index.js
+@@ -1,3 +1,4 @@
++import './bun-stack-trace.js';
+ import fs from 'fs';
+ import { declareFactoryPlugin, PluginKind } from '@stryker-mutator/api/plugin';
+ import { vitestTestRunnerFactory } from './vitest-test-runner.js';
+diff --git a/dist/src/vitest-test-runner.js b/dist/src/vitest-test-runner.js
+index 84f1ca026503b8e92b7adc952ec6c6a401943656..427acffe434407a430b2a9dd44e9d077fcd010d1 100644
+--- a/dist/src/vitest-test-runner.js
++++ b/dist/src/vitest-test-runner.js
+@@ -7,7 +7,7 @@ import { commonTokens, tokens, } from '@stryker-mutator/api/plugin';
+ import { DryRunStatus, toMutantRunResult, determineHitLimitReached, TestStatus, } from '@stryker-mutator/api/test-runner';
+ import { errorToString, escapeRegExp, normalizeFileName, notEmpty, testFilesProvided, } from '@stryker-mutator/util';
+ import { vitestWrapper } from './vitest-wrapper.js';
+-import { convertTestToTestResult, fromTestId, collectTestsFromSuite, normalizeCoverage, isErrorCodeError, VITEST_ERROR_CODES, } from './vitest-helpers.js';
++import { convertTestToTestResult, fromTestId, collectTestsFromSuite, normalizeCoverage, normalizeTestId, isErrorCodeError, VITEST_ERROR_CODES, } from './vitest-helpers.js';
+ const STRYKER_SETUP = fileURLToPath(new URL('./stryker-setup.js', import.meta.url));
+ export class VitestTestRunner {
+     log;
+@@ -177,6 +177,21 @@ export class VitestTestRunner {
+             failure ||= testResult.status === TestStatus.Failed;
+             return testResult;
+         });
++        // A test file that throws while importing (e.g. a static mutant breaking module-level code)
++        // has no test results, so report the file itself as a failed test.
++        for (const file of this.ctx.state.getFiles()) {
++            if (file.result?.state === 'fail' && !collectTestsFromSuite(file).some((test) => test.result?.state === 'fail')) {
++                failure = true;
++                testResults.push({
++                    id: normalizeTestId(`${file.filepath}#`),
++                    name: file.name,
++                    fileName: path.resolve(file.filepath),
++                    timeSpentMs: file.result.duration ?? 0,
++                    status: TestStatus.Failed,
++                    failureMessage: file.result.errors?.[0]?.message ?? 'StrykerJS: Test file failed',
++                });
++            }
++        }
+         if (!failure && this.ctx.state.errorsSet.size > 0) {
+             const errorText = [...this.ctx.state.errorsSet]
+                 .map(errorToString)

@@ -5,7 +5,6 @@
   "workspaces": {
     ".": {
       "project": ["*.{js,mjs,cjs,ts,mts,cts}"],
-      "stryker": false,
       "ignoreDependencies": [
         "@angular-eslint/eslint-plugin",
         "varlock",

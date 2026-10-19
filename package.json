@@ -18,7 +18,7 @@
     "test": "vp run -r --parallel --concurrency-limit 4 test",
     "test:visual": "vp run @eitri/client#test:visual",
     "test:visual:update": "vp run @eitri/client#test:visual:update",
-    "test:mutation": "stryker run",
+    "test:mutation": "bunx --bun stryker run",
     "test:full": "vp run test && vp run test:mutation && vp run test:visual",
     "knip": "knip",
     "knip:production": "knip --production",
@@ -36,6 +36,7 @@
   "devDependencies": {
     "@angular-eslint/eslint-plugin": "catalog:angular",
     "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@types/bun": "catalog:",
     "@varlock/bitwarden-plugin": "^2.0.1",
     "dependency-cruiser": "18.2.0",
@@ -73,7 +74,7 @@
     "@vitest/browser-playwright": "4.1.11",
     "@vitest/coverage-v8": "4.1.11",
     "effect": "4.0.0-rc.115",
-    "jsdom": "^30.0.1",
+    "happy-dom": "^21.0.3",
     "playwright": "1.62.1",
     "tslib": "^2.8.1",
     "typescript": "~6.0.3",
@@ -99,6 +100,7 @@
   },
   "patchedDependencies": {
     "@storybook/angular-vite@11.0.0-alpha.0": "patches/@storybook%2Fangular-vite@11.0.0-alpha.0.patch",
-    "@effect/platform-node-shared@4.0.0-rc.115": "patches/@effect%2Fplatform-node-shared@4.0.0-rc.115.patch"
+    "@effect/platform-node-shared@4.0.0-rc.115": "patches/@effect%2Fplatform-node-shared@4.0.0-rc.115.patch",
+    "@stryker-mutator/vitest-runner@10.0.0": "patches/@stryker-mutator%2Fvitest-runner@10.0.0.patch"
   }
 }
