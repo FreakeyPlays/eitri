@@ -10,10 +10,10 @@
     "test": "bun --bun vp test run"
   },
   "dependencies": {
-    "@effect/platform-bun": "catalog:",
-    "@effect/sql-sqlite-bun": "catalog:",
+    "@effect/platform-bun": "catalog:effect",
+    "@effect/sql-sqlite-bun": "catalog:effect",
     "@eitri/contracts": "workspace:*",
-    "effect": "catalog:"
+    "effect": "catalog:effect"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

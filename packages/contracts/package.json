@@ -14,7 +14,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "effect": "catalog:"
+    "effect": "catalog:effect"
   },
   "devDependencies": {
     "@typescript/native": "catalog:",
