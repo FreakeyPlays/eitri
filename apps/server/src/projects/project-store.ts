@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
 import { type OpenedProject, ProjectsError, type Projects } from "@eitri/contracts/project";
 import { Context, Effect, Layer } from "effect";
@@ -59,7 +58,7 @@ export class ProjectStore extends Context.Service<
               const [existing] = yield* sql<{ id: string }>`
                 SELECT id FROM projects WHERE path = ${canonical}
               `;
-              const openedProjectId = existing?.id ?? randomUUID();
+              const openedProjectId = existing?.id ?? crypto.randomUUID();
               yield* sql`UPDATE projects SET sort_order = sort_order + 1`;
               // Reopening keeps whatever name the project already carries.
               yield* sql`

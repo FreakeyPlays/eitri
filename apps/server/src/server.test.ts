@@ -23,12 +23,12 @@ console.log(prompt);
   await chmod(join(directory, "codex"), 0o755);
   await Bun.write(join(directory, "claude"), '#!/bin/sh\nprintf "login required" >&2\nexit 7\n');
   await chmod(join(directory, "claude"), 0o755);
-  const path = process.env["PATH"];
-  process.env["PATH"] = `${directory}${delimiter}${path}`;
+  const path = Bun.env["PATH"];
+  Bun.env["PATH"] = `${directory}${delimiter}${path}`;
   return {
     uninstall: async () => {
-      if (path === undefined) delete process.env["PATH"];
-      else process.env["PATH"] = path;
+      if (path === undefined) delete Bun.env["PATH"];
+      else Bun.env["PATH"] = path;
       await rm(directory, { recursive: true, force: true });
     },
   };

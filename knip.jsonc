@@ -18,8 +18,6 @@
       "ignoreDependencies": ["@spartan-ng/cli"],
     },
     "apps/server": {
-      // Invoked directly by the Bun test script; imports use vite-plus/test.
-      "ignoreDependencies": ["vitest"],
       "entry": ["src/bin.ts!"],
       "project": ["src/**/*.ts!"],
     },

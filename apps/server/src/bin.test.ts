@@ -15,7 +15,7 @@ const modes = [
   { shutdown: "signal", watch: false },
   { shutdown: "stdin", watch: false },
   { shutdown: "eof", watch: false },
-  ...(process.env["EITRI_SERVER_EXE"] ? [] : [{ shutdown: "signal", watch: true }]),
+  ...(Bun.env["EITRI_SERVER_EXE"] ? [] : [{ shutdown: "signal", watch: true }]),
 ];
 
 describe.each(modes)("server executable (shutdown: $shutdown, watch: $watch)", (mode) => {
@@ -44,20 +44,20 @@ if (prompt === "wait-for-shutdown") {
     await chmod(join(directory, "codex"), 0o755);
     child = Bun.spawn(
       [
-        process.env["EITRI_SERVER_EXE"] ?? "bun",
+        Bun.env["EITRI_SERVER_EXE"] ?? "bun",
         ...(watch ? ["--watch"] : []),
-        ...(process.env["EITRI_SERVER_EXE"] ? [] : [new URL("./bin.ts", import.meta.url).pathname]),
+        ...(Bun.env["EITRI_SERVER_EXE"] ? [] : [new URL("./bin.ts", import.meta.url).pathname]),
         ...(sidecar ? ["--sidecar"] : []),
       ],
       {
         cwd: directory,
         env: {
-          ...process.env,
+          ...Bun.env,
           PORT: "0",
           // Never the developer's own data: the executable would otherwise
           // resolve the installed app's directory and write to it.
           EITRI_DATA_DIR: join(directory, "userdata"),
-          PATH: `${directory}${delimiter}${process.env["PATH"]}`,
+          PATH: `${directory}${delimiter}${Bun.env["PATH"]}`,
         },
         stdio: ["pipe", "pipe", "pipe"],
       },

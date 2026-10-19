@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import angular from "@analogjs/vite-plugin-angular";
 import { defineConfig } from "vite-plus";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
