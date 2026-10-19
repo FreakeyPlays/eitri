@@ -3,14 +3,116 @@ import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { EitriRpcs } from "@eitri/contracts/rpc";
+import { Effect, Exit, type Runtime } from "effect";
 import type { RpcGroup } from "effect/rpc";
-import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 import { type Connection, connect, failure, run } from "./test-utils/server.ts";
 
 /**
  * The executable's own concerns: the startup handshake, and every way the parent can be told to
  * stop. server.test.ts covers the RPC calls and origins in process.
  */
+describe("entrypoint configuration", () => {
+  const argv = Bun.argv;
+  const server = vi.fn(() => Effect.void);
+  const main = vi.fn((_effect: unknown, _options: { teardown: Runtime.Teardown }) => {});
+
+  beforeEach(() => {
+    vi.resetModules();
+    server.mockClear();
+    main.mockClear();
+    Object.defineProperty(Bun, "argv", { value: ["bun", "bin.ts"] });
+    vi.stubEnv("PORT", undefined);
+    vi.stubEnv("EITRI_DATA_DIR", "/test-data");
+    vi.doMock("./server.ts", () => ({ runServer: server }));
+    vi.doMock("@effect/platform-bun/BunRuntime", () => ({ runMain: main }));
+    vi.doMock("node:os", () => ({ homedir: () => "/test-home" }));
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Bun, "argv", { value: argv });
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    vi.doUnmock("./server.ts");
+    vi.doUnmock("@effect/platform-bun/BunRuntime");
+    vi.doUnmock("node:os");
+    vi.resetModules();
+  });
+
+  it.each([
+    [undefined, 4318],
+    ["0", 0],
+    ["65535", 65535],
+    ["4321", 4321],
+  ])("starts the requested port %s", async (input, expected) => {
+    vi.stubEnv("PORT", input);
+    await import("./bin.ts");
+    expect(server).toHaveBeenCalledExactlyOnceWith({
+      port: expected,
+      sidecar: false,
+      dataDir: "/test-data",
+    });
+    expect(main).toHaveBeenCalledExactlyOnceWith(Effect.void, {
+      teardown: expect.any(Function),
+    });
+  });
+
+  it.each(["-1", "65536", "1.5", "not-a-port"])("refuses invalid PORT %s", async (port) => {
+    vi.stubEnv("PORT", port);
+    await expect(import("./bin.ts")).rejects.toThrow(
+      "PORT must be an integer between 0 and 65535.",
+    );
+    expect(server).not.toHaveBeenCalled();
+    expect(main).not.toHaveBeenCalled();
+  });
+
+  it("passes sidecar mode and the development data directory to the server", async () => {
+    Object.defineProperty(Bun, "argv", { value: ["bun", "bin.ts", "--sidecar", "--dev"] });
+    vi.stubEnv("EITRI_DATA_DIR", undefined);
+    await import("./bin.ts");
+    expect(server).toHaveBeenCalledExactlyOnceWith({
+      port: 4318,
+      sidecar: true,
+      dataDir: "/test-home/.eitri-dev/userdata",
+    });
+  });
+
+  it.each([Exit.void, Exit.interrupt()])(
+    "exits cleanly after success or interruption",
+    async (exit) => {
+      await import("./bin.ts");
+      const stopped = new Error("process stopped");
+      const terminate = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw stopped;
+      });
+      const onExit = vi.fn();
+      expect(() => main.mock.calls[0][1].teardown(exit, onExit)).toThrow(stopped);
+      expect(terminate).toHaveBeenCalledExactlyOnceWith(0);
+      expect(onExit).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps the failing exit code on runtime failure", async () => {
+    await import("./bin.ts");
+    const terminate = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("must not turn a failure into a clean exit");
+    });
+    const onExit = vi.fn();
+    main.mock.calls[0][1].teardown(Exit.fail(new Error("startup failed")), onExit);
+    expect(terminate).not.toHaveBeenCalled();
+    expect(onExit).toHaveBeenCalledExactlyOnceWith(1);
+  });
+});
+
 const modes = [
   { shutdown: "signal", watch: false },
   { shutdown: "stdin", watch: false },

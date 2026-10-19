@@ -5,10 +5,15 @@ import { AgentError, PROMPT_RANGE_MESSAGE } from "@eitri/contracts/agent";
 import { FOLDER_PATH_MESSAGE, FoldersError } from "@eitri/contracts/folder";
 import { ProjectsError } from "@eitri/contracts/project";
 import { EitriRpcs } from "@eitri/contracts/rpc";
-import { Cause, Effect, Schema } from "effect";
+import * as BunHttpServer from "@effect/platform-bun/BunHttpServer";
+import * as BunServices from "@effect/platform-bun/BunServices";
+import { Cause, Console, Effect, Fiber, Layer, Logger, Schema, Stdio, Stream } from "effect";
 import { Rpc, RpcGroup } from "effect/rpc";
-import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
+import { runServer } from "./server.ts";
 import { type Connection, connect, failure, run, socketUrl, start } from "./test-utils/server.ts";
+
+vi.mock("@effect/platform-bun/BunHttpServer", { spy: true });
 
 /** Installs deterministic stand-ins for the agent CLIs; tests never invoke a real agent. */
 const installAgents = async () => {
@@ -50,6 +55,82 @@ const Unchecked = RpcGroup.make(
 );
 
 const folder = async (prefix: string) => realpath(await mkdtemp(join(tmpdir(), prefix)));
+
+describe("sidecar", () => {
+  it.each(["command", "eof"])(
+    "sidecar announces readiness, logs requests and stops on stdin %s",
+    async (shutdown) => {
+      const dataDir = await folder("eitri-sidecar-");
+      const announced = Promise.withResolvers<string>();
+      const input = Promise.withResolvers<void>();
+      const log = vi.fn();
+      let readingInput = false;
+      const stdin = Stream.fromAsyncIterable(
+        (async function* () {
+          readingInput = true;
+          await input.promise;
+          if (shutdown === "command") yield new TextEncoder().encode("shutdown\n");
+        })(),
+        (cause) => cause,
+      );
+      const recorder: Console.Console = Object.assign(Object.create(console), {
+        log: (...args: ReadonlyArray<unknown>) => announced.resolve(args.join(" ")),
+      });
+      // The Bun server supplies its own Stdio; replace only that process boundary.
+      const { layer: httpLayer } = await vi.importActual<typeof BunHttpServer>(
+        "@effect/platform-bun/BunHttpServer",
+      );
+      const serverLayer = vi
+        .spyOn(BunHttpServer, "layer")
+        .mockImplementation((options) =>
+          Layer.mergeAll(httpLayer(options), Stdio.layerTest({ stdin: Stream.orDie(stdin) })),
+        );
+      const fiber = Effect.runFork(
+        runServer({ port: 0, sidecar: true, dataDir }).pipe(
+          Effect.provideService(Console.Console, recorder),
+          Effect.provide(Logger.layer([Logger.make(log)])),
+          Effect.provide(BunServices.layer),
+        ),
+      );
+      let socket: WebSocket | undefined;
+      try {
+        const ready = await Promise.race([
+          announced.promise,
+          Effect.runPromise(Fiber.join(fiber)).then(() => {
+            throw new Error("Server stopped before readiness");
+          }),
+        ]);
+        const announcement = JSON.parse(ready) as { url: string };
+        expect(announcement).toEqual({
+          url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/?$/),
+        });
+        await vi.waitFor(() => expect(readingInput).toBe(true));
+        const response = await fetch(new URL("/health", announcement.url));
+        expect(await response.json()).toEqual({ status: "ok" });
+        expect(log).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: ["Sent HTTP response"],
+          }),
+        );
+        socket = new WebSocket(socketUrl(announcement.url));
+        await new Promise<void>((resolve, reject) => {
+          socket!.addEventListener("open", () => resolve(), { once: true });
+          socket!.addEventListener("error", reject, { once: true });
+        });
+        input.resolve();
+        await Effect.runPromise(Fiber.join(fiber).pipe(Effect.timeout("2 seconds")));
+        await vi.waitFor(() => expect(socket?.readyState).toBe(WebSocket.CLOSED));
+        await expect(fetch(new URL("/health", announcement.url))).rejects.toThrow();
+      } finally {
+        input.resolve();
+        socket?.close();
+        await Effect.runPromise(Fiber.interrupt(fiber));
+        serverLayer.mockRestore();
+        await rm(dataDir, { recursive: true, force: true });
+      }
+    },
+  );
+});
 
 // Bun lets a client choose its Origin header, which a browser never would.
 const BunWebSocket = WebSocket as unknown as new (

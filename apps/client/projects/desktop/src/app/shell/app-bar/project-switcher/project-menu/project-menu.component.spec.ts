@@ -138,7 +138,10 @@ describe("ProjectMenuComponent", () => {
     settings("eitri")!.click();
 
     expect(openDialog).toHaveBeenCalledOnce();
-    expect(openDialog.mock.calls[0][1]).toMatchObject({ context: { project: eitri } });
+    expect(openDialog.mock.calls[0][1]).toEqual({
+      context: { project: eitri },
+      contentClass: "sm:max-w-md",
+    });
     // Naming and removal happen in the dialog, so the dropdown stays open.
     expect(chosen).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();

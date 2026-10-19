@@ -1,13 +1,11 @@
-import { Component, signal } from "@angular/core";
+import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
 import { provideSpartanHlm } from "@ui/utils";
 import { ProjectService } from "@features/projects/project.service";
 import { settingsRoute } from "@pages/settings/settings";
+import { workspaceRoutes } from "@pages/workspace";
 import { BreadcrumbsComponent } from "./breadcrumbs.component";
-
-@Component({ template: "" })
-class BlankComponent {}
 
 describe("BreadcrumbsComponent", () => {
   /** Just enough for the project switcher to name "no project"; its own spec covers the rest. */
@@ -17,11 +15,7 @@ describe("BreadcrumbsComponent", () => {
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
-        provideRouter([
-          settingsRoute,
-          { path: "overview", component: BlankComponent },
-          { path: "wiki", component: BlankComponent, data: { crumb: "Wiki" } },
-        ]),
+        provideRouter([settingsRoute, ...workspaceRoutes]),
         { provide: ProjectService, useValue: projects },
       ],
     });

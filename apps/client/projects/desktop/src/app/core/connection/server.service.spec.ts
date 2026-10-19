@@ -44,15 +44,80 @@ describe("sentenceOf", () => {
 });
 
 describe("ServerService", () => {
-  it("asks the desktop shell again after it could not name the server", async () => {
-    const getServerUrl = vi.fn<() => Promise<string>>().mockRejectedValue(new Error("not ready"));
+  const server = (getServerUrl: () => Promise<string>) => {
     TestBed.configureTestingModule({
       providers: [{ provide: ClientService, useValue: { getServerUrl, selectDirectory: null } }],
     });
-    const server = TestBed.inject(ServerService);
+    return TestBed.inject(ServerService);
+  };
 
-    await expect(server.call("projects.list")).rejects.toThrow("Could not reach the Eitri server");
-    await expect(server.call("projects.list")).rejects.toThrow("Could not reach the Eitri server");
+  it("asks the desktop shell again after it could not name the server", async () => {
+    const notReady = new Error("not ready");
+    const getServerUrl = vi.fn<() => Promise<string>>().mockRejectedValue(notReady);
+    const service = server(getServerUrl);
+
+    await expect(service.call("projects.list")).rejects.toThrow("Could not reach the Eitri server");
+    await expect(service.call("projects.list")).rejects.toHaveProperty("cause", notReady);
     expect(getServerUrl).toHaveBeenCalledTimes(2);
+  });
+
+  describe("over the socket", () => {
+    const listing = {
+      path: "/home/me",
+      directories: [{ name: "git", path: "/home/me/git" }],
+      truncated: false,
+    };
+    const dialed: string[] = [];
+    let exit: unknown;
+
+    /** A server that answers every request with `exit`. */
+    class FakeWebSocket extends EventTarget {
+      readonly readyState = 1;
+
+      constructor(url: string) {
+        super();
+        dialed.push(url);
+      }
+
+      send(frame: string) {
+        const { _tag, id } = JSON.parse(frame);
+        if (_tag !== "Request") return;
+        const data = JSON.stringify({ _tag: "Exit", requestId: id, exit });
+        setTimeout(() => this.dispatchEvent(Object.assign(new Event("message"), { data })));
+      }
+
+      close() {}
+    }
+
+    beforeEach(() => {
+      dialed.length = 0;
+      vi.stubGlobal("WebSocket", FakeWebSocket);
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("answers calls with what the server sent, over one socket at its address", async () => {
+      exit = { _tag: "Success", value: listing };
+      const service = server(async () => "http://127.0.0.1:4318");
+
+      expect(await service.call("folders.browse", { path: "~" })).toEqual(listing);
+      expect(await service.call("folders.browse", {})).toEqual(listing);
+
+      expect(dialed).toEqual(["ws://127.0.0.1:4318/api/rpc"]);
+    });
+
+    it("rejects with the server's own sentence when it refuses", async () => {
+      exit = {
+        _tag: "Failure",
+        cause: [
+          { _tag: "Fail", error: { _tag: "FoldersError", message: "“/gone” does not exist." } },
+        ],
+      };
+      const service = server(async () => "http://127.0.0.1:4318");
+
+      await expect(service.call("folders.browse", { path: "/gone" })).rejects.toThrow(
+        "“/gone” does not exist.",
+      );
+    });
   });
 });

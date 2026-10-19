@@ -10,7 +10,9 @@ describe("AgentRequestSchema", () => {
   });
 
   it.each(["", "   ", "\n\t"])("rejects the blank prompt %j", (prompt) => {
-    expect(() => decodeRequest({ agent: "codex", prompt })).toThrow(PROMPT_RANGE_MESSAGE);
+    expect(() => decodeRequest({ agent: "codex", prompt })).toThrow(
+      "Enter a prompt between 1 and 16,000 bytes.",
+    );
   });
 
   it("measures the limit in UTF-8 bytes, not characters", () => {

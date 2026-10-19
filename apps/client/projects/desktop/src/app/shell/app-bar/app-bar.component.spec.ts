@@ -7,14 +7,34 @@ import { ProjectService } from "@features/projects/project.service";
 import { AppBarComponent } from "./app-bar.component";
 import { LayoutService, type Panel } from "@shell/layout/layout.service";
 
+const { isTauri, getCurrentWindow } = vi.hoisted(() => ({
+  isTauri: vi.fn(() => false),
+  getCurrentWindow: vi.fn(),
+}));
+vi.mock("@tauri-apps/api/core", () => ({ isTauri }));
+vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow }));
+
+const mac = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)";
+const windows = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+
 describe("AppBarComponent", () => {
   const open = signal<Panel[]>([]);
   const toggle = vi.fn();
+  const isFullscreen = vi.fn();
+  const onResized = vi.fn();
+  const unlisten = vi.fn();
   /** Just enough for the project switcher to name "no project"; its own spec covers the rest. */
   const projects = { active: signal(null), projects: signal([]) };
 
+  afterEach(() => vi.restoreAllMocks());
+
   beforeEach(() => {
     toggle.mockReset();
+    unlisten.mockReset();
+    isTauri.mockReturnValue(false);
+    isFullscreen.mockReset().mockResolvedValue(false);
+    onResized.mockReset().mockResolvedValue(unlisten);
+    getCurrentWindow.mockReset().mockReturnValue({ isFullscreen, onResized });
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
@@ -39,7 +59,21 @@ describe("AppBarComponent", () => {
     const element: HTMLElement = fixture.nativeElement;
     const labels = () =>
       [...element.querySelectorAll("button")].map((button) => button.getAttribute("aria-label"));
-    return { element, labels };
+    return { fixture, element, labels };
+  }
+
+  /** Renders in the given host and lets the window's async answers land. */
+  async function renderIn(tauri: boolean, userAgent: string) {
+    isTauri.mockReturnValue(tauri);
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+    const view = await render();
+    const header = view.element.querySelector("header")!;
+    const settle = async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve));
+      await view.fixture.whenStable();
+    };
+    await settle();
+    return { ...view, settle, inset: () => header.classList.contains("pl-20") };
   }
 
   it("always offers the terminal and right panel toggles", async () => {
@@ -86,5 +120,62 @@ describe("AppBarComponent", () => {
     expect(buttons[1].getAttribute("aria-expanded")).toBe("true");
     for (const button of buttons) button.click();
     expect(toggle.mock.calls).toEqual([["sidebar"], ["bottom"], ["right"]]);
+  });
+
+  describe("window controls inset", () => {
+    it.each([
+      { host: "a browser on a Mac", tauri: false, userAgent: mac },
+      { host: "Tauri off macOS", tauri: true, userAgent: windows },
+    ])("stays flush in $host", async ({ tauri, userAgent }) => {
+      const { inset } = await renderIn(tauri, userAgent);
+      expect(inset()).toBe(false);
+      expect(getCurrentWindow).not.toHaveBeenCalled();
+    });
+
+    it("clears the macOS window buttons, except in fullscreen where they hide", async () => {
+      const { inset, settle } = await renderIn(true, mac);
+      expect(inset()).toBe(true);
+
+      isFullscreen.mockResolvedValue(true);
+      onResized.mock.calls[0][0]();
+      await settle();
+      expect(inset()).toBe(false);
+
+      isFullscreen.mockResolvedValue(false);
+      onResized.mock.calls[0][0]();
+      await settle();
+      expect(inset()).toBe(true);
+    });
+
+    it("keeps its default when the window can't tell if it is fullscreen", async () => {
+      isFullscreen.mockRejectedValue(new Error("unavailable"));
+      const { inset } = await renderIn(true, mac);
+      expect(inset()).toBe(false);
+    });
+
+    it("stops listening for resizes when the bar goes away", async () => {
+      const { fixture } = await renderIn(true, mac);
+      expect(unlisten).not.toHaveBeenCalled();
+      fixture.destroy();
+      expect(unlisten).toHaveBeenCalledOnce();
+    });
+
+    it("stops listening right away if the bar went away while registering", async () => {
+      let registered!: (stop: () => void) => void;
+      onResized.mockReturnValue(new Promise((resolve) => (registered = resolve)));
+      const { fixture, settle } = await renderIn(true, mac);
+      fixture.destroy();
+      registered(unlisten);
+      await settle();
+      expect(unlisten).toHaveBeenCalledOnce();
+    });
+
+    it("survives a window that can't report resizes", async () => {
+      onResized.mockRejectedValue(new Error("unavailable"));
+      const { inset, fixture } = await renderIn(true, mac);
+      expect(inset()).toBe(true);
+      expect(() => fixture.destroy()).not.toThrow();
+      expect(unlisten).not.toHaveBeenCalled();
+    });
   });
 });

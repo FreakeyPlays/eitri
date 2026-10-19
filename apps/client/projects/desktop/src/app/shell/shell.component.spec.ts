@@ -4,6 +4,7 @@ import { provideRouter, Router } from "@angular/router";
 import { ProjectService } from "@features/projects/project.service";
 import { provideSpartanHlm } from "@ui/utils";
 import { routes } from "../app.routes";
+import { defaultLayout, LayoutService } from "./layout/layout.service";
 import { ShellComponent } from "./shell.component";
 
 const eitri = {
@@ -39,6 +40,26 @@ describe("ShellComponent", () => {
       return result;
     };
     return { fixture, element, button };
+  }
+
+  afterEach(() => vi.useRealTimers());
+
+  /** The sidebar's rail under fake timers, with pointer events to drive it. */
+  async function renderRail(collapsed = true) {
+    const view = await render();
+    if (collapsed) {
+      view.button("Collapse sidebar").click();
+      await view.fixture.whenStable();
+    }
+    vi.useFakeTimers();
+    const rail = view.element.querySelector<HTMLElement>("#shell-sidebar")!.parentElement!;
+    const pointer = (type: string) =>
+      rail.dispatchEvent(new PointerEvent(type, { pointerType: "mouse" }));
+    const advance = (ms: number) => {
+      vi.advanceTimersByTime(ms);
+      view.fixture.detectChanges();
+    };
+    return { ...view, layout: TestBed.inject(LayoutService), pointer, advance };
   }
 
   it("opens the overview with the sidebar and placeholder panels", async () => {
@@ -227,6 +248,184 @@ describe("ShellComponent", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("does not peek when the pointer leaves the rail before it rests", async () => {
+    const { layout, pointer, advance } = await renderRail();
+    pointer("pointermove");
+    advance(200);
+    pointer("pointerleave");
+    advance(500);
+    expect(layout.peeking()).toBe(false);
+  });
+
+  it("closes the peek shortly after the pointer leaves the rail", async () => {
+    const { layout, pointer, advance } = await renderRail();
+    pointer("pointermove");
+    advance(350);
+    expect(layout.peeking()).toBe(true);
+    pointer("pointerleave");
+    advance(100);
+    expect(layout.peeking()).toBe(true);
+    advance(50);
+    expect(layout.peeking()).toBe(false);
+  });
+
+  it("peeks again once the pointer has left the rail after Escape", async () => {
+    const { layout, pointer, advance } = await renderRail();
+    pointer("pointermove");
+    advance(350);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    pointer("pointermove");
+    advance(500);
+    expect(layout.peeking()).toBe(false);
+    pointer("pointerleave");
+    pointer("pointermove");
+    advance(350);
+    expect(layout.peeking()).toBe(true);
+  });
+
+  it("does not peek over a sidebar that was expanded while the pointer rested", async () => {
+    const { layout, pointer, advance } = await renderRail();
+    pointer("pointermove");
+    advance(200);
+    layout.toggle("sidebar");
+    advance(200);
+    expect(layout.peeking()).toBe(false);
+  });
+
+  it("keeps the longer wait after a click until the pointer leaves, even on an open sidebar", async () => {
+    const { layout, pointer, advance } = await renderRail(false);
+    pointer("pointerdown");
+    pointer("pointermove");
+    advance(1200);
+    layout.toggle("sidebar");
+    pointer("pointermove");
+    advance(350);
+    expect(layout.peeking()).toBe(false);
+    advance(850);
+    expect(layout.peeking()).toBe(true);
+  });
+
+  it("closes the peek on a new page", async () => {
+    const { fixture, element, button } = await render();
+    button("Collapse sidebar").click();
+    await fixture.whenStable();
+    const layout = TestBed.inject(LayoutService);
+    layout.peeking.set(true);
+    fixture.detectChanges();
+    expect(element.querySelector<HTMLElement>("#shell-sidebar")!.style.width).toBe("240px");
+    await TestBed.inject(Router).navigateByUrl("/settings/appearance");
+    await fixture.whenStable();
+    expect(layout.peeking()).toBe(false);
+    expect(element.querySelector<HTMLElement>("#shell-sidebar")!.style.width).toBe("42px");
+  });
+
+  it("stops waiting to peek once the shell is destroyed", async () => {
+    const { layout, fixture, pointer } = await renderRail();
+    pointer("pointermove");
+    fixture.destroy();
+    vi.advanceTimersByTime(500);
+    expect(layout.peeking()).toBe(false);
+  });
+
+  const resizers = {
+    right: {
+      show: "Show right panel",
+      handle: "Resize right panel",
+      panel: "shell-right",
+      ratio: "rightRatio",
+    },
+    bottom: {
+      show: "Show terminal",
+      handle: "Resize terminal",
+      panel: "shell-bottom",
+      ratio: "bottomRatio",
+    },
+  } as const;
+
+  /** Shows a panel and returns its handle with what the layout has kept of its share. */
+  async function renderResizer(split: keyof typeof resizers) {
+    const view = await render();
+    const { show, handle, panel, ratio } = resizers[split];
+    view.button(show).click();
+    await view.fixture.whenStable();
+    const layout = TestBed.inject(LayoutService);
+    return {
+      ...view,
+      handle: view.element.querySelector<HTMLElement>(
+        `hlm-resizable-handle[aria-label="${handle}"]`,
+      )!,
+      size: () =>
+        Number(view.element.querySelector(`#${panel}`)!.getAttribute("data-panel-size")) / 100,
+      kept: () => layout.shown()[ratio],
+      fallback: defaultLayout[ratio],
+    };
+  }
+
+  const key = (type: "keydown" | "keyup", name: string) =>
+    new KeyboardEvent(type, { key: name, bubbles: true });
+
+  it.each([
+    ["right", "ArrowLeft"],
+    ["right", "ArrowRight"],
+    ["right", "Home"],
+    ["right", "End"],
+    ["bottom", "ArrowUp"],
+    ["bottom", "ArrowDown"],
+    ["bottom", "Home"],
+    ["bottom", "End"],
+  ] as const)("keeps the %s panel's share after %s", async (split, name) => {
+    const { fixture, handle, size, kept, fallback } = await renderResizer(split);
+    handle.dispatchEvent(key("keydown", name));
+    handle.dispatchEvent(key("keyup", name));
+    await fixture.whenStable();
+    expect(kept()).not.toBe(fallback);
+    expect(kept()).toBeCloseTo(size());
+  });
+
+  it("stores the terminal's percentage as a fractional ratio without changing the right panel", async () => {
+    const { fixture, handle, size, kept } = await renderResizer("bottom");
+    const layout = TestBed.inject(LayoutService);
+    const rightRatio = layout.shown().rightRatio;
+    const before = size();
+
+    handle.dispatchEvent(key("keydown", "ArrowUp"));
+    fixture.detectChanges();
+    const resized = size();
+    expect(resized).toBeGreaterThan(before);
+    expect(resized).toBeLessThan(1);
+    handle.dispatchEvent(key("keyup", "ArrowUp"));
+    await fixture.whenStable();
+
+    expect(kept()).toBeCloseTo(resized);
+    expect(size()).toBeCloseTo(resized);
+    expect(layout.shown().rightRatio).toBe(rightRatio);
+  });
+
+  it("keeps the share only when a resizing key is released", async () => {
+    const { fixture, handle, kept, fallback } = await renderResizer("right");
+    handle.dispatchEvent(key("keydown", "ArrowLeft"));
+    handle.dispatchEvent(key("keyup", "Shift"));
+    await fixture.whenStable();
+    expect(kept()).toBe(fallback);
+  });
+
+  it("keeps the share when a drag ends without moving", async () => {
+    const { fixture, handle, kept, fallback } = await renderResizer("right");
+    handle.dispatchEvent(new MouseEvent("mousedown", { clientX: 900, bubbles: true }));
+    document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    await fixture.whenStable();
+    expect(kept()).toBe(fallback);
+  });
+
+  it("does not keep a share for a panel that was hidden mid-resize", async () => {
+    const { fixture, button, handle, kept, fallback } = await renderResizer("right");
+    handle.dispatchEvent(key("keydown", "ArrowLeft"));
+    button("Hide right panel").click();
+    await fixture.whenStable();
+    handle.dispatchEvent(key("keyup", "ArrowLeft"));
+    expect(kept()).toBe(fallback);
   });
 
   it("resizes the right and bottom independently with nested panels present", async () => {

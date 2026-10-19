@@ -47,6 +47,14 @@ describe("ProjectService", () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it("starts with no projects and none active", () => {
+    const projects = service();
+
+    expect(projects.projects()).toEqual([]);
+    expect(projects.active()).toBeNull();
+    expect(projects.loaded()).toBe(false);
+  });
+
   it("loads the collection and selects the most recently opened project", async () => {
     call.mockResolvedValue({ projects: [eitri, other] });
     const projects = service();
@@ -141,6 +149,19 @@ describe("ProjectService", () => {
     });
   });
 
+  it("keeps the collection when renaming is refused", async () => {
+    call
+      .mockResolvedValueOnce({ projects: [eitri] })
+      .mockRejectedValueOnce(new Error("That project is not in the list."));
+    const projects = service();
+    await projects.load();
+
+    expect(await projects.rename(eitri.id, "Client portal")).toBe(false);
+
+    expect(projects.projects()).toEqual([eitri]);
+    expect(projects.error()).toBe("That project is not in the list.");
+  });
+
   it("forgets by ID and selects the first remaining project when the active one is removed", async () => {
     call
       .mockResolvedValueOnce({ projects: [other, third, eitri], openedProjectId: other.id })
@@ -230,6 +251,17 @@ describe("ProjectService", () => {
 
     expect(await projects.pickFolder()).toBeNull();
     expect(projects.canPickFolder).toBe(picker !== null);
+    expect(projects.error()).toBeNull();
+    expect(call).not.toHaveBeenCalled();
+  });
+
+  it("reports a failing platform picker and opens nothing", async () => {
+    selectDirectory.mockRejectedValue(new Error("The dialog could not be shown."));
+    const projects = service(selectDirectory);
+
+    expect(await projects.pickFolder()).toBeNull();
+
+    expect(projects.error()).toBe("The dialog could not be shown.");
     expect(call).not.toHaveBeenCalled();
   });
 

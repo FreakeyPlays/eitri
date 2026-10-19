@@ -26,6 +26,34 @@ describe("LayoutService", () => {
     expect(layout.animating()).toBe(false);
   });
 
+  it("restarts the animation window on every toggle", () => {
+    vi.useFakeTimers();
+    const layout = TestBed.inject(LayoutService);
+    layout.toggle("right");
+    vi.advanceTimersByTime(150);
+    layout.toggle("bottom");
+    vi.advanceTimersByTime(100);
+    expect(layout.animating()).toBe(true);
+    vi.advanceTimersByTime(100);
+    expect(layout.animating()).toBe(false);
+  });
+
+  it("leaves no animation timer running once the service is destroyed", () => {
+    vi.useFakeTimers();
+    TestBed.inject(LayoutService).toggle("right");
+    expect(vi.getTimerCount()).toBe(1);
+    TestBed.resetTestingModule();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps a peek when another panel toggles", () => {
+    const layout = TestBed.inject(LayoutService);
+    layout.toggle("sidebar");
+    layout.peeking.set(true);
+    layout.toggle("right");
+    expect(layout.peeking()).toBe(true);
+  });
+
   it("shows the sidebar while peeking, and drops the peek on toggle", () => {
     const layout = TestBed.inject(LayoutService);
     layout.toggle("sidebar");

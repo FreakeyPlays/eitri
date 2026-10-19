@@ -6,7 +6,6 @@ import {
   OpenProjectRequestSchema,
   PROJECT_NAME_MAX,
   PROJECT_NAME_MESSAGE,
-  PROJECT_PATH_MESSAGE,
   ProjectsSchema,
   RenameProjectRequestSchema,
 } from "./project.ts";
@@ -29,7 +28,9 @@ describe("OpenProjectRequestSchema", () => {
   );
 
   it.each(["", "   ", "eitri", "./eitri", "~/git/eitri"])("rejects the path %j", (path) => {
-    expect(() => decodeRequest({ path })).toThrow(PROJECT_PATH_MESSAGE);
+    expect(() => decodeRequest({ path })).toThrow(
+      "Enter the absolute path of a folder on this computer.",
+    );
   });
 });
 
@@ -59,12 +60,17 @@ describe("project ID requests", () => {
     expect(decodeForget({ id: project.id })).toEqual({ id: project.id });
   });
 
-  it.each([null, undefined, "eitri", "/git/eitri", "00000000-0000-0000-0000-000000000000"])(
-    "rejects the invalid project ID %j",
-    (id) => {
-      expect(() => decodeForget({ id })).toThrow();
-    },
-  );
+  it.each([
+    null,
+    undefined,
+    "eitri",
+    "/git/eitri",
+    "00000000-0000-0000-0000-000000000000",
+    `prefix${project.id}`,
+    `${project.id}suffix`,
+  ])("rejects the invalid project ID %j", (id) => {
+    expect(() => decodeForget({ id })).toThrow();
+  });
 });
 
 describe("project replies", () => {

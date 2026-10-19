@@ -18,9 +18,10 @@ const listing = (path = "/home/me"): FolderListing => ({
 
 describe("FolderBrowserComponent", () => {
   const listFolders = vi.fn<(path?: string) => Promise<FolderListing>>();
+  const scrollIntoView = vi.fn();
 
   beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView.mockReset();
     listFolders.mockReset().mockResolvedValue(listing());
     TestBed.configureTestingModule({
       providers: [provideSpartanHlm(), { provide: ProjectService, useValue: { listFolders } }],
@@ -53,8 +54,10 @@ describe("FolderBrowserComponent", () => {
       fixture.detectChanges();
     };
     const press = (key: string, init: KeyboardEventInit = {}) => {
-      field.dispatchEvent(new KeyboardEvent("keydown", { key, ...init }));
+      const event = new KeyboardEvent("keydown", { key, cancelable: true, ...init });
+      field.dispatchEvent(event);
       fixture.detectChanges();
+      return event;
     };
     const settle = () =>
       vi.waitFor(() => {
@@ -87,6 +90,35 @@ describe("FolderBrowserComponent", () => {
     fixture.detectChanges();
     expect(listFolders).toHaveBeenLastCalledWith("~/eitri");
     expect(field.value).toBe("~/eitri/");
+  });
+
+  it("offers nothing to open until the first listing arrives", async () => {
+    listFolders.mockReturnValue(new Promise(() => {}));
+    const { fixture, element, rows, button } = await render();
+    fixture.detectChanges();
+
+    expect(element.textContent).toContain("Loading folders");
+    expect(rows()).toEqual([]);
+    expect(element.querySelector<HTMLElement>("span[title]")?.title).toBe("");
+    expect(button("Open").disabled).toBe(true);
+  });
+
+  it("focuses the field on start and again after stepping into a folder", async () => {
+    const { fixture, field, row } = await render();
+    expect(document.activeElement).toBe(field);
+
+    field.blur();
+    row("eitri").click();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(field);
+  });
+
+  it("mutes the way up against the folders", async () => {
+    const { row } = await render();
+
+    expect(row("..").classList.contains("text-muted-foreground")).toBe(true);
+    expect(row("git").classList.contains("text-muted-foreground")).toBe(false);
   });
 
   it("hides dot folders until the filter asks for them", async () => {
@@ -127,6 +159,25 @@ describe("FolderBrowserComponent", () => {
     expect(rows()[0]).not.toBe("..");
   });
 
+  it("does not browse before the field holds a folder", async () => {
+    const { field, type } = await render();
+
+    type("g");
+
+    expect(field.value).toBe("g");
+    expect(listFolders).toHaveBeenCalledOnce();
+  });
+
+  it("does not browse again when filtering inside the folder it stepped into", async () => {
+    const { fixture, row, type } = await render();
+    row("eitri").click();
+    fixture.detectChanges();
+
+    type("~/eitri/g");
+
+    expect(listFolders).toHaveBeenCalledTimes(2);
+  });
+
   it("walks up when a separator is deleted from the field", async () => {
     const { field, type } = await render();
 
@@ -150,6 +201,60 @@ describe("FolderBrowserComponent", () => {
     expect(field.value).toBe("~/git/");
     await settle();
     expect(highlighted()).toBeUndefined();
+  });
+
+  it("moves the highlight both ways and stops at the ends of the list", async () => {
+    const { type, press, highlighted } = await render();
+
+    type("~/g");
+    for (let step = 0; step < 4; step++) press("ArrowDown");
+    expect(highlighted()).toBe("legit");
+
+    press("ArrowUp");
+    expect(highlighted()).toBe("git");
+    for (let step = 0; step < 4; step++) press("ArrowUp");
+    expect(highlighted()).toBe("games");
+  });
+
+  it("scrolls the highlighted folder into view", async () => {
+    const { press, row } = await render();
+
+    press("ArrowDown");
+
+    expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({ block: "nearest" });
+    expect(scrollIntoView.mock.contexts[0]).toBe(row(".."));
+  });
+
+  it("leaves the arrows alone when no folder matches", async () => {
+    const { type, press, highlighted } = await render();
+    type("~/nothing");
+
+    press("ArrowDown");
+
+    expect(highlighted()).toBeUndefined();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("takes over arrows and Enter from the field, and no other key", async () => {
+    const { press, selected } = await render();
+
+    expect(press("a").defaultPrevented).toBe(false);
+    expect(selected).not.toHaveBeenCalled();
+    expect(listFolders).toHaveBeenCalledOnce();
+
+    expect(press("ArrowDown").defaultPrevented).toBe(true);
+    expect(press("ArrowUp").defaultPrevented).toBe(true);
+    expect(press("Enter").defaultPrevented).toBe(true);
+  });
+
+  it("ignores keys while an input method is composing", async () => {
+    const { press, highlighted, selected } = await render();
+
+    press("ArrowDown", { isComposing: true });
+    press("Enter", { isComposing: true });
+
+    expect(highlighted()).toBeUndefined();
+    expect(selected).not.toHaveBeenCalled();
   });
 
   it("drops an arrow highlight when stepping into a folder without a filter", async () => {
@@ -229,6 +334,64 @@ describe("FolderBrowserComponent", () => {
     expect(element.querySelector('[role="alert"]')).toBeNull();
     expect(row("eitri").title).toBe("/second/eitri/");
     expect(button("Open").disabled).toBe(false);
+  });
+
+  it("keeps an older listing from replacing the newest or ending its loading", async () => {
+    const answers: ((value: FolderListing) => void)[] = [];
+    const { fixture, type, row, button } = await render();
+    listFolders.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+    const afterAnswer = async () => {
+      await new Promise((settle) => setTimeout(settle));
+      fixture.detectChanges();
+    };
+
+    type("/first/");
+    type("/second/");
+    answers[0](listing("/first"));
+    await afterAnswer();
+
+    expect(row("eitri").title).toBe("~/eitri/");
+    expect(button("Open").disabled).toBe(true);
+
+    answers[1](listing("/second"));
+    await afterAnswer();
+
+    expect(row("eitri").title).toBe("/second/eitri/");
+    expect(button("Open").disabled).toBe(false);
+  });
+
+  it("drops the reason once another folder is browsed", async () => {
+    const { fixture, element, type } = await render();
+    const alert = () => element.querySelector('[role="alert"]');
+    listFolders.mockRejectedValueOnce(new Error("“/gone” does not exist."));
+
+    type("/gone/");
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(alert()).not.toBeNull();
+    });
+    type("~/");
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(alert()).toBeNull();
+    });
+  });
+
+  it("keeps Enter from opening a stale folder after browsing failed", async () => {
+    const { fixture, element, field, type, press, selected } = await render();
+    listFolders.mockRejectedValue(new Error("“/gone” does not exist."));
+
+    type("/gone/g");
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(element.querySelector('[role="alert"]')).not.toBeNull();
+    });
+    press("Enter");
+
+    expect(field.value).toBe("/gone/g");
+    expect(listFolders).toHaveBeenCalledTimes(2);
+    expect(selected).not.toHaveBeenCalled();
   });
 
   it("shows why a folder could not be browsed and refuses to open it", async () => {

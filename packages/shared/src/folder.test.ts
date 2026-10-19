@@ -3,8 +3,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { toBrowseFoldersRequest } from "./folder.ts";
 
 describe("folder browser requests", () => {
-  it("omits the path when browsing from home", () => {
-    expect(toBrowseFoldersRequest()).toEqual({});
+  it("omits the path when browsing folders from home", () => {
+    expect(toBrowseFoldersRequest()).toStrictEqual({});
   });
 
   it("accepts an explicit absolute path", () => {
@@ -12,6 +12,8 @@ describe("folder browser requests", () => {
   });
 
   it("reports an invalid path as one useful sentence", () => {
-    expect(() => toBrowseFoldersRequest("relative/path")).toThrow(FOLDER_PATH_MESSAGE);
+    const request = () => toBrowseFoldersRequest("relative/path");
+    expect(request).toThrow(Error);
+    expect(request).toThrow(FOLDER_PATH_MESSAGE);
   });
 });

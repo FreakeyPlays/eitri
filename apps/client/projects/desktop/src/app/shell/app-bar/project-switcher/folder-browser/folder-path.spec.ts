@@ -32,8 +32,10 @@ describe("folder paths", () => {
     ["~/git/", "~/git"],
     [" ~/git// ", "~/git"],
     ["/", "/"],
+    [" / ", "/"],
     ["~/", "~"],
     ["C:\\", "C:\\"],
+    [" C:\\ ", "C:\\"],
     ["C:\\Users\\", "C:\\Users"],
   ])("asks the server for %j as %j", (folder, expected) => {
     expect(requestPath(folder)).toBe(expected);
@@ -41,6 +43,7 @@ describe("folder paths", () => {
 
   it.each([
     ["~/git/eitri/", "~/git/"],
+    ["~/git//", "~/"],
     ["/home/", "/"],
     ["/", null],
     ["~/", null],

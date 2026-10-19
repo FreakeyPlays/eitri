@@ -1,5 +1,5 @@
 import { Database as Sqlite } from "bun:sqlite";
-import { mkdir, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer } from "effect";
@@ -199,6 +199,58 @@ describe("project store", () => {
       [...paths].sort(),
     );
     expect(reopenedByFirst.openedProjectId).toBe(reopenedBySecond.openedProjectId);
+  });
+
+  // Root reads any folder, so the permission check only shows up for a normal user.
+  it.skipIf(process.getuid?.() === 0)(
+    "says Eitri may not open a folder it cannot read",
+    async () => {
+      const path = await project("locked");
+      await chmod(path, 0o000);
+      try {
+        expect(await failure((store) => store.open(path))).toMatchObject({
+          _tag: "ProjectsError",
+          message: `Eitri may not open “${path}”.`,
+        });
+      } finally {
+        await chmod(path, 0o755);
+      }
+    },
+  );
+
+  describe("when the project table disappears under a running server", () => {
+    /** Another process damaging the file after this store connected. */
+    const dropTable = Effect.sync(() => {
+      const database = new Sqlite(join(dataDir, "state.sqlite"));
+      database.exec("DROP TABLE projects");
+      database.close(true);
+    });
+    const broken = (use: (store: ProjectStore["Service"]) => Effect.Effect<unknown, unknown>) =>
+      failure((store) => Effect.andThen(dropTable, use(store)));
+
+    it.each([
+      ["snapshot", (store: ProjectStore["Service"]) => store.snapshot],
+      ["forget", (store: ProjectStore["Service"]) => store.forget("id")],
+      ["rename", (store: ProjectStore["Service"]) => store.rename("id", "name")],
+    ])("answers %s with a readable error", async (_name, use) => {
+      const error = await broken(use);
+
+      expect(error).toMatchObject({ _tag: "ProjectsError" });
+      expect((error as { message: string }).message).toMatch(
+        /^Could not use the project database\. \S/,
+      );
+    });
+
+    it("answers open with a readable error", async () => {
+      const path = await project("work");
+
+      const error = await broken((store) => store.open(path));
+
+      expect(error).toMatchObject({ _tag: "ProjectsError" });
+      expect((error as { message: string }).message).toMatch(
+        /^Could not use the project database\. \S/,
+      );
+    });
   });
 
   it("reports invalid paths and a data directory it cannot use", async () => {
