@@ -29,7 +29,15 @@ describe("ProjectSettingsComponent", () => {
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
-        { provide: BrnDialogRef, useValue: { close, state: signal("open") } },
+        {
+          provide: BrnDialogRef,
+          useValue: {
+            close,
+            state: signal("open"),
+            registerDescription: () => {},
+            unregisterDescription: () => {},
+          },
+        },
         { provide: DIALOG_DATA, useValue: { project: eitri } },
         { provide: ProjectService, useValue: { busy, error, rename, forget } },
       ],

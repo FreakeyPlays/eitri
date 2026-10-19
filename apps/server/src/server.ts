@@ -1,6 +1,6 @@
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer";
 import { Console, Effect, Layer, Stdio, Stream } from "effect";
-import { HttpRouter, HttpServer } from "effect/unstable/http";
+import { HttpRouter, HttpServer } from "effect/http";
 import { Database } from "./storage/database.ts";
 import { HttpRoutes } from "./transport/http.ts";
 import { ProjectStore } from "./projects/project-store.ts";

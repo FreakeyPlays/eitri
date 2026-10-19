@@ -28,7 +28,7 @@ index 61a24e123b64650c50e785313698046cd463f5af..9849f2a9768cfe27c027ff890df11e74
  import { declareFactoryPlugin, PluginKind } from '@stryker-mutator/api/plugin';
  import { vitestTestRunnerFactory } from './vitest-test-runner.js';
 diff --git a/dist/src/vitest-test-runner.js b/dist/src/vitest-test-runner.js
-index 84f1ca026503b8e92b7adc952ec6c6a401943656..427acffe434407a430b2a9dd44e9d077fcd010d1 100644
+index 84f1ca026503b8e92b7adc952ec6c6a401943656..0b53dd5a91bd398602933b86202b7e09f8a45ec2 100644
 --- a/dist/src/vitest-test-runner.js
 +++ b/dist/src/vitest-test-runner.js
 @@ -7,7 +7,7 @@ import { commonTokens, tokens, } from '@stryker-mutator/api/plugin';
@@ -40,7 +40,18 @@ index 84f1ca026503b8e92b7adc952ec6c6a401943656..427acffe434407a430b2a9dd44e9d077
  const STRYKER_SETUP = fileURLToPath(new URL('./stryker-setup.js', import.meta.url));
  export class VitestTestRunner {
      log;
-@@ -177,6 +177,21 @@ export class VitestTestRunner {
+@@ -144,7 +144,9 @@ export class VitestTestRunner {
+         if (testIds.length > 0) {
+             const parsedTests = testIds.map(fromTestId);
+             const regexTestNameFilter = parsedTests
+-                .map(({ test: name }) => escapeRegExp(name))
++                // Test ids join suite and test names with spaces, but Vitest 5 matches the pattern
++                // against names joined with " > ", so accept either at each space.
++                .map(({ test: name }) => escapeRegExp(name).replaceAll(' ', '(?: | > )'))
+                 .join('|');
+             const regex = new RegExp(regexTestNameFilter);
+             testFilesToRun = parsedTests.map(({ file }) => file);
+@@ -177,6 +179,21 @@ export class VitestTestRunner {
              failure ||= testResult.status === TestStatus.Failed;
              return testResult;
          });

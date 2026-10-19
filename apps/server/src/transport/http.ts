@@ -1,7 +1,7 @@
 import { EitriRpcs, RPC_PATH } from "@eitri/contracts/rpc";
 import { Effect, Layer } from "effect";
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
-import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
+import { RpcSerialization, RpcServer } from "effect/rpc";
 import { RpcHandlers } from "./rpc.ts";
 
 // Packaged Tauri origins and the same-origin development proxy.

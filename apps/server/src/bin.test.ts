@@ -3,7 +3,7 @@ import { chmod, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { EitriRpcs } from "@eitri/contracts/rpc";
-import type { RpcGroup } from "effect/unstable/rpc";
+import type { RpcGroup } from "effect/rpc";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { type Connection, connect, failure, run } from "./test-utils/server.ts";
 

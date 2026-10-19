@@ -4,7 +4,7 @@ import { join } from "node:path";
 import * as BunServices from "@effect/platform-bun/BunServices";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { Effect, Fiber } from "effect";
-import type { ChildProcessSpawner } from "effect/unstable/process";
+import type { ChildProcessSpawner } from "effect/process";
 import { runAgent } from "./agent.ts";
 
 type Run<A, E> = Effect.Effect<A, E, ChildProcessSpawner.ChildProcessSpawner>;

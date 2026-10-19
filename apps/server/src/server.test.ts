@@ -6,7 +6,7 @@ import { FOLDER_PATH_MESSAGE, FoldersError } from "@eitri/contracts/folder";
 import { ProjectsError } from "@eitri/contracts/project";
 import { EitriRpcs } from "@eitri/contracts/rpc";
 import { Cause, Effect, Schema } from "effect";
-import { Rpc, RpcGroup } from "effect/unstable/rpc";
+import { Rpc, RpcGroup } from "effect/rpc";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { type Connection, connect, failure, run, socketUrl, start } from "./test-utils/server.ts";
 

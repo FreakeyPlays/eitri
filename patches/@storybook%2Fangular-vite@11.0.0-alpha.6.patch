@@ -1,8 +1,8 @@
 diff --git a/dist/docgen/docgen-worker.js b/dist/docgen/docgen-worker.js
-index 4a51147f5431e4a11d423da5abbe27d57d24f5f7..ea195028614d735ae408c5952416978e6ba93ae4 100644
+index d1bc0bfaef88afc141344f0b6b4d46a06fb756b1..de368b397bfeb50ec5af43ddb1bc7ee8f7421191 100644
 --- a/dist/docgen/docgen-worker.js
 +++ b/dist/docgen/docgen-worker.js
-@@ -990,8 +990,13 @@ var stripImportQualifiers = (text) => text.replace(/import\("[^"]*"\)\./g, ""),
+@@ -1061,8 +1061,13 @@ var stripImportQualifiers = (text) => text.replace(/import\("[^"]*"\)\./g, ""),
      }
      if (ts.isTypeOperatorNode(typeNode))
        return `${typeNode.operator === ts.SyntaxKind.KeyOfKeyword ? "keyof" : typeNode.operator === ts.SyntaxKind.ReadonlyKeyword ? "readonly" : "unique"} ${this.render(typeNode.type)}`;

@@ -14,12 +14,14 @@ export default defineConfig({
       sidecar: {
         command: "bun scripts/prepare-sidecar.ts",
         dependsOn: ["@eitri/server#build"],
-        env: ["TAURI_ENV_TARGET_TRIPLE"],
-        // Bun reads the staging script through its own loader, which file
-        // tracking misses, so a changed staging layout would replay a stale
-        // sidecar from the cache instead of being rebuilt.
-        input: [{ auto: true }, "scripts/**"],
-        output: ["src-tauri/sidecar/**"],
+        cache: {
+          env: ["TAURI_ENV_TARGET_TRIPLE"],
+          // Bun reads the staging script through its own loader, which file
+          // tracking misses, so a changed staging layout would replay a stale
+          // sidecar from the cache instead of being rebuilt.
+          input: [{ auto: true }, "scripts/**"],
+          output: ["src-tauri/sidecar/**"],
+        },
       },
       "tauri:check": {
         command: "vp run tauri:fmt && vp run tauri:lint && vp run tauri:test",
@@ -64,6 +66,8 @@ export default defineConfig({
             enabled: true,
             headless: true,
             provider: playwright(),
+            // Storybook's plugin denies file writes unless asked; vis writes its snapshots.
+            api: { allowWrite: true },
             instances: [
               {
                 browser: "chromium",

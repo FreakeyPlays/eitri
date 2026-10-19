@@ -94,11 +94,11 @@ async function mutationTests() {
           )
           // Stryker's vitest runner can't run browser mode.
           .filter((project) => !project.test?.browser?.enabled)
-          // Without `extends`, a project doesn't re-bundle this file into the shared
+          // Inline projects extend this file by default, re-bundling it into the shared
           // node_modules/.vite-temp, which races across workers.
           .map((project) => ({
             ...project,
-            extends: undefined,
+            extends: false,
             root: dir,
             resolve: { ...project.resolve, alias },
           }))
