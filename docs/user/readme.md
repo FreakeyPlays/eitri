@@ -5,20 +5,20 @@ Eitri is in early development. For setup and launch instructions, see the
 
 ## What works today
 
-Eitri provides a project menu in the application bar and a layout with a sidebar,
-main area, right panel and terminal area. Chat creation and sending prompts are
-not available in the UI yet; the right panel and terminal are placeholders.
+Eitri opens its application layout: an app bar, a sidebar, the main area, a right
+panel, and a terminal area.
 
-- **Projects:** open the project menu in the application bar to choose a folder
-  or return to a remembered project. Desktop uses a native folder picker; web
-  browses folders on the server. A Git repository is not required.
-- **Project settings:** use the settings button beside a project to change its
-  displayed name or remove it from the list. Neither action changes or deletes
-  the folder on disk.
-- **Selection:** choose one project or all projects. Eitri remembers the project
-  list, but every start begins on all projects.
-- **Panels:** show or hide the sidebar, terminal, and right panel with the
-  buttons in the application bar. Drag the handle between two panels to resize
-  them, or focus the handle and use the arrow keys. Eitri remembers panel sizes
-  and visibility.
-- **Command palette:** press ⌘K or Ctrl+K to navigate or toggle a panel by name.
+- **Projects:** choose a project from the menu on the project name in the app
+  bar. On desktop, add one with the system folder picker; in the browser, browse
+  the server's folders instead. A Git repository is not required. Each project
+  in the menu has settings to rename it or remove it from Eitri; removing never
+  touches its files.
+- **Pages:** the sidebar leads to Overview, Manage, Wiki and the settings. These
+  pages are placeholders for now. Without a selected project, Overview, Manage
+  and Wiki ask you to choose one first.
+- **Sessions:** the sidebar's search, filter and new session controls are
+  placeholders; sending prompts to an agent is not available yet.
+- **Panels:** show or hide the sidebar, terminal and right panel with the buttons
+  in the app bar. Rest the pointer on the collapsed sidebar to peek it open. Drag
+  the handle between two panels to resize them, or focus the handle and use the
+  arrow keys. The layout resets each time Eitri starts.

@@ -1,0 +1,33 @@
+<nav class="ml-2 min-w-0" aria-label="Breadcrumb">
+  <ol class="flex min-w-0 items-center gap-0.5 text-sm">
+    <li class="flex">
+      <a
+        hlmBtn
+        variant="ghost"
+        size="icon-sm"
+        class="aria-[current=page]:bg-accent"
+        [routerLink]="'/' + home.path"
+        routerLinkActive
+        ariaCurrentWhenActive="page"
+        [attr.aria-label]="home.label"
+      >
+        <ng-icon name="lucideHome" size="16" aria-hidden="true" />
+      </a>
+    </li>
+    <li class="flex min-w-0 items-center gap-0.5">
+      <span class="text-muted-foreground" aria-hidden="true">/</span>
+      <app-project-switcher />
+    </li>
+    @for (crumb of crumbs(); track $index) {
+      <li class="flex min-w-0 items-center">
+        <span class="text-muted-foreground" aria-hidden="true">/</span>
+        <span
+          class="truncate px-2"
+          [class.text-muted-foreground]="!$last"
+          [attr.aria-current]="$last ? 'page' : null"
+          >{{ crumb }}</span
+        >
+      </li>
+    }
+  </ol>
+</nav>

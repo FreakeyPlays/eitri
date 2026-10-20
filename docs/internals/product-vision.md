@@ -36,12 +36,12 @@ that agents can use. The agreed release scope is recorded in the
 Writing documentation manually currently feels unrewarding to the maintainer.
 
 Eitri is envisioned as an alternative graphical interface for working with
-coding agents, with chat management and additional tools such as a UML editor
-and editable project instructions. Across multiple chats, the original idea can
+coding agents, with session management and additional tools such as a UML editor
+and editable project instructions. Across multiple sessions, the original idea can
 drift or disappear from context. An agent may produce working software that
 still differs from the intended design.
 
-The user wants diagrams to preserve the intended structure across chats and
+The user wants diagrams to preserve the intended structure across sessions and
 wants agents to propose and show plan changes visually. Editing prompts and
 context, including AGENTS.md, is part of the desired control. Including a system
 diagram in a prompt is one suggested interaction. Automatic verification of code
@@ -60,7 +60,7 @@ revises the proposal and submits it for review again. Approval applies to the
 specific revision the user inspected.
 
 For ordinary implementation tasks, the user directs the agent to implement
-immediately or plan first through the chat, as in existing harnesses. Eitri
+immediately or plan first through the session, as in existing harnesses. Eitri
 does not impose an additional planning workflow for those tasks. Technical
 enforcement and storage of proposal revisions remain undecided.
 
@@ -85,13 +85,13 @@ not a finalized technical choice. Showing changes through Git diffs is a potenti
 the visual review experience and proposal storage still need definition.
 The user proposes making the diagram persistent project guidance through
 AGENTS.md, while leaving the exact integration open to technical advice.
-Embedding the diagram versus referencing its file remains undecided. Chats
+Embedding the diagram versus referencing its file remains undecided. Sessions
 operate independently: Eitri does not automatically broadcast approved changes
-to other chats, interrupt them, or refresh their context. Divergent plans are
-reconciled when work is merged. Chats have independent conversation histories
+to other sessions, interrupt them, or refresh their context. Divergent plans are
+reconciled when work is merged. Sessions have independent conversation histories
 but share the files in their working directory. An agent rereading a changed
 diagram or instruction file sees the current file. Eitri does not maintain
-hidden per-chat copies of guidance; worktrees provide separate working files.
+hidden per-session copies of guidance; worktrees provide separate working files.
 
 Technical evidence checked on 2026-09-14: Codex supports project instructions in
 [AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
@@ -121,31 +121,31 @@ to the provider-specific behavior described above.
   npx without installing the desktop app. This is a distribution intention;
   packaging and prerequisites are unresolved.
 - A future mobile client should connect to an Eitri server instance to access
-  and manage chats. Desktop feature parity is not the goal, and mobile is outside
+  and manage sessions. Desktop feature parity is not the goal, and mobile is outside
   the current focus.
 
-## Documentation and chat organization
+## Documentation and session organization
 
 The first release should let users read and edit Markdown documentation in their
 project and work on it with an agent. Documents remain ordinary project files
 usable outside Eitri.
 
-Chats can initially be organized in a sidebar. A subsequent Kanban view should
-organize those same chats; a separate task entity is not required by this scope.
+Sessions can initially be organized in a sidebar. A subsequent Kanban view should
+organize those same sessions; a separate task entity is not required by this scope.
 The agreed order of delivery and deferred capabilities live in the
 [roadmap](roadmap.md).
 
 ## Agents, concurrent work, and change inspection
 
 Both Codex and Claude Code are required for the first milestone. When creating
-a chat, users choose the project directory or, for Git projects, a separate
-worktree as its working directory. That choice remains visible on the chat.
+a session, users choose the project directory or, for Git projects, a separate
+worktree as its working directory. That choice remains visible on the session.
 
-Multiple chats may work concurrently and without an Eitri-imposed write lock
+Multiple sessions may work concurrently and without an Eitri-imposed write lock
 in the same directory, including projects without Git. Separate worktrees are
 an optional isolation mechanism. Shared-directory changes can overlap. The change
-view belongs to the working directory or worktree: chats sharing a directory
-show the same changes, without attributing them to an individual chat.
+view belongs to the working directory or worktree: sessions sharing a directory
+show the same changes, without attributing them to an individual session.
 
 Users should be able to inspect changed files and file diffs in Eitri.
 First-milestone diffs are limited to Git projects. Diffs without Git are deferred,
@@ -174,7 +174,7 @@ The product interview has established the intended first-milestone scope. These
 questions belong to the relevant implementation specifications; they are not
 additional feature commitments:
 
-- Chat foundation: persistence and recovery, cancellation, agent permissions,
+- Session foundation: persistence and recovery, cancellation, agent permissions,
   worktree lifecycle, and the Git comparison baseline.
 - Guidance integration: file inclusion and loading behavior for both Agent CLIs,
   preserving existing instructions, and making supplied context understandable.
@@ -183,7 +183,7 @@ additional feature commitments:
 - Proposal review: revision storage and the mechanism enforcing approval before
   implementation of a proposed architecture change.
 - Release validation: measurable responsiveness checks and an end-to-end scenario
-  covering both agents, optional diagrams, independent chats, and app exit.
+  covering both agents, optional diagrams, independent sessions, and app exit.
 
 Automatic detection of code that violates the approved architecture is deferred;
 the initial review workflow covers proposed architecture changes.

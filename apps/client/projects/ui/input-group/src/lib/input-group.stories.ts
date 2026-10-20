@@ -2,7 +2,6 @@ import { NgIcon, provideIcons } from "@ng-icons/core";
 import { lucideArrowUp, lucideCheck, lucideInfo, lucidePlus, lucideSearch } from "@ng-icons/lucide";
 import { HlmInputGroup, HlmInputGroupImports } from "@ui/input-group";
 import { HlmSeparator } from "@ui/separator";
-import { HlmTooltip } from "@ui/tooltip";
 import { type Meta, type StoryObj, moduleMetadata } from "@storybook/angular-vite";
 
 const meta: Meta<HlmInputGroup> = {
@@ -11,7 +10,7 @@ const meta: Meta<HlmInputGroup> = {
   tags: ["autodocs"],
   decorators: [
     moduleMetadata({
-      imports: [HlmInputGroupImports, NgIcon, HlmSeparator, HlmTooltip],
+      imports: [HlmInputGroupImports, NgIcon, HlmSeparator],
       providers: [
         provideIcons({ lucideSearch, lucideInfo, lucidePlus, lucideArrowUp, lucideCheck }),
       ],
@@ -43,7 +42,6 @@ export const Default: Story = {
               hlmInputGroupButton
               class="rounded-full"
               size="icon-xs"
-              [hlmTooltip]="'This is content in a tooltip.'"
             >
               <ng-icon name="lucideInfo" />
             </button>

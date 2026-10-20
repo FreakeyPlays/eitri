@@ -1,14 +1,13 @@
-<button
+<a
   hlmBtn
   variant="ghost"
   size="icon"
-  appAnimateIcon
   class="gap-2 overflow-hidden aria-[current=page]:bg-accent group-data-[expanded=true]/rail:w-full group-data-[expanded=true]/rail:justify-start group-data-[expanded=true]/rail:px-[7px]"
+  [routerLink]="link()"
+  routerLinkActive
+  [routerLinkActiveOptions]="{ exact: true }"
+  ariaCurrentWhenActive="page"
   [attr.aria-label]="label()"
-  [attr.aria-current]="active() ? 'page' : null"
-  [hlmTooltip]="label()"
-  position="right"
-  [tooltipDisabled]="expanded()"
 >
   <ng-content />
   @if (expanded()) {
@@ -17,4 +16,4 @@
       >{{ label() }}</span
     >
   }
-</button>
+</a>

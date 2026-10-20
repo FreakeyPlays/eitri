@@ -1,0 +1,28 @@
+@if (projects.active()) {
+  <router-outlet />
+} @else if (projects.loaded() || projects.error()) {
+  <!-- Waits for the first read, so a returning user never sees this flash by. -->
+  <section
+    class="flex h-full min-h-64 items-center justify-center p-6"
+    aria-labelledby="no-project-title"
+  >
+    <div class="flex max-w-sm flex-col items-center text-center">
+      <div class="flex size-11 items-center justify-center rounded-xl border bg-muted/60">
+        <ng-icon
+          name="lucideFolderOpen"
+          size="20"
+          class="text-muted-foreground"
+          aria-hidden="true"
+        />
+      </div>
+      <h1 id="no-project-title" class="mt-4 text-lg font-medium tracking-tight">
+        Select your Project
+      </h1>
+      <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Eitri works inside a project: a folder with your code that your agents read, change, and
+        run. Sessions, the overview, and management all belong to one.
+      </p>
+      <button hlmBtn class="mt-6" (click)="layout.showProjectMenu()">Choose a project</button>
+    </div>
+  </section>
+}

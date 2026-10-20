@@ -16,6 +16,12 @@ const other = {
   name: "other",
   lastOpenedAt: "2026-09-20T10:00:00.000Z",
 };
+const third = {
+  ...eitri,
+  id: "32b31fe2-7130-44d4-9069-b81909b31e98",
+  path: "/git/third",
+  name: "third",
+};
 
 describe("ProjectService", () => {
   const call = vi.fn<(tag: string, payload?: unknown) => Promise<unknown>>();
@@ -41,15 +47,22 @@ describe("ProjectService", () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it("loads the collection with all projects selected", async () => {
+  it("starts with no projects and none active", () => {
+    const projects = service();
+
+    expect(projects.projects()).toEqual([]);
+    expect(projects.active()).toBeNull();
+    expect(projects.loaded()).toBe(false);
+  });
+
+  it("loads the collection and selects the most recently opened project", async () => {
     call.mockResolvedValue({ projects: [eitri, other] });
     const projects = service();
 
     await projects.load();
 
     expect(projects.projects()).toEqual([eitri, other]);
-    expect(projects.active()).toBeNull();
-    expect(projects.allSelected()).toBe(true);
+    expect(projects.active()).toEqual(eitri);
     expect(call).toHaveBeenCalledExactlyOnceWith("projects.list");
   });
 
@@ -111,16 +124,16 @@ describe("ProjectService", () => {
     expect(call).not.toHaveBeenCalled();
   });
 
-  it("selects all projects locally without a server call", async () => {
-    call.mockResolvedValueOnce({ projects: [eitri], openedProjectId: eitri.id });
+  it("has no active project when the collection is empty", async () => {
+    call.mockResolvedValue({ projects: [] });
     const projects = service();
-    await projects.open(eitri.path);
 
-    expect(projects.openAll()).toBe(true);
+    await projects.load();
 
-    expect(projects.allSelected()).toBe(true);
-    expect(projects.projects()).toEqual([eitri]);
-    expect(call).toHaveBeenCalledOnce();
+    expect(projects.projects()).toEqual([]);
+    expect(projects.active()).toBeNull();
+    expect(projects.loaded()).toBe(true);
+    expect(call).toHaveBeenCalledExactlyOnceWith("projects.list");
   });
 
   it("renames by ID with a trimmed name", async () => {
@@ -136,18 +149,59 @@ describe("ProjectService", () => {
     });
   });
 
-  it("forgets by ID and clears selection when the returned collection lacks it", async () => {
+  it("keeps the collection when renaming is refused", async () => {
     call
-      .mockResolvedValueOnce({ projects: [other, eitri], openedProjectId: other.id })
-      .mockResolvedValueOnce({ projects: [eitri] });
+      .mockResolvedValueOnce({ projects: [eitri] })
+      .mockRejectedValueOnce(new Error("That project is not in the list."));
+    const projects = service();
+    await projects.load();
+
+    expect(await projects.rename(eitri.id, "Client portal")).toBe(false);
+
+    expect(projects.projects()).toEqual([eitri]);
+    expect(projects.error()).toBe("That project is not in the list.");
+  });
+
+  it("forgets by ID and selects the first remaining project when the active one is removed", async () => {
+    call
+      .mockResolvedValueOnce({ projects: [other, third, eitri], openedProjectId: other.id })
+      .mockResolvedValueOnce({ projects: [third, eitri] });
     const projects = service();
     await projects.open(other.path);
 
     expect(await projects.forget(other.id)).toBe(true);
 
-    expect(projects.projects()).toEqual([eitri]);
-    expect(projects.allSelected()).toBe(true);
+    expect(projects.projects()).toEqual([third, eitri]);
+    expect(projects.active()).toEqual(third);
+    expect(call).toHaveBeenCalledTimes(2);
     expect(call).toHaveBeenLastCalledWith("projects.forget", { id: other.id });
+  });
+
+  it("preserves the active project when another project is forgotten", async () => {
+    call
+      .mockResolvedValueOnce({ projects: [other, third, eitri], openedProjectId: eitri.id })
+      .mockResolvedValueOnce({ projects: [third, eitri] });
+    const projects = service();
+    await projects.open(eitri.path);
+
+    expect(await projects.forget(other.id)).toBe(true);
+
+    expect(projects.projects()).toEqual([third, eitri]);
+    expect(projects.active()).toEqual(eitri);
+    expect(call).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears selection when the last project is forgotten", async () => {
+    call
+      .mockResolvedValueOnce({ projects: [eitri], openedProjectId: eitri.id })
+      .mockResolvedValueOnce({ projects: [] });
+    const projects = service();
+    await projects.open(eitri.path);
+
+    expect(await projects.forget(eitri.id)).toBe(true);
+
+    expect(projects.projects()).toEqual([]);
+    expect(projects.active()).toBeNull();
   });
 
   it("keeps the collection when forgetting is refused", async () => {
@@ -171,12 +225,12 @@ describe("ProjectService", () => {
     const loading = projects.load();
     expect(projects.busy()).toBe(true);
     expect(await projects.open(other.path)).toBe(false);
-    expect(projects.openAll()).toBe(false);
+    expect(await projects.forget(eitri.id)).toBe(false);
     answer({ projects: [eitri] });
     await loading;
 
     expect(projects.busy()).toBe(false);
-    expect(projects.allSelected()).toBe(true);
+    expect(projects.active()).toEqual(eitri);
     expect(call).toHaveBeenCalledTimes(1);
   });
 
@@ -197,6 +251,17 @@ describe("ProjectService", () => {
 
     expect(await projects.pickFolder()).toBeNull();
     expect(projects.canPickFolder).toBe(picker !== null);
+    expect(projects.error()).toBeNull();
+    expect(call).not.toHaveBeenCalled();
+  });
+
+  it("reports a failing platform picker and opens nothing", async () => {
+    selectDirectory.mockRejectedValue(new Error("The dialog could not be shown."));
+    const projects = service(selectDirectory);
+
+    expect(await projects.pickFolder()).toBeNull();
+
+    expect(projects.error()).toBe("The dialog could not be shown.");
     expect(call).not.toHaveBeenCalled();
   });
 

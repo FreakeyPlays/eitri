@@ -7,18 +7,18 @@
     "dev": "vp pack --watch --sourcemap --on-success \"bun dist/bin.mjs --dev\"",
     "build": "vp pack",
     "typecheck": "tsc --noEmit",
-    "test": "bun --bun vitest run"
+    "test": "bun --bun vp test run"
   },
   "dependencies": {
-    "@effect/platform-bun": "catalog:",
-    "@effect/sql-sqlite-bun": "catalog:",
+    "@effect/platform-bun": "catalog:effect",
+    "@effect/sql-sqlite-bun": "catalog:effect",
     "@eitri/contracts": "workspace:*",
-    "effect": "catalog:"
+    "effect": "catalog:effect"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vite-plus": "catalog:"
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
+import { Component, inject, signal } from "@angular/core";
 import { type Project, PROJECT_NAME_MAX } from "@eitri/contracts/project";
 import { BrnDialogRef, injectBrnDialogContext } from "@spartan-ng/brain/dialog";
 import { HlmButton } from "@ui/button";
@@ -13,7 +13,6 @@ import { ProjectService } from "@features/projects/project.service";
  */
 @Component({
   selector: "app-project-settings",
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HlmButton, HlmDialogDescription, HlmDialogHeader, HlmDialogTitle, HlmInput],
   templateUrl: "./project-settings.component.html",
   host: { class: "flex flex-col gap-4" },

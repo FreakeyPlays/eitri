@@ -1,16 +1,6 @@
 import { type BooleanInput } from "@angular/cdk/coercion";
-import { booleanAttribute, computed, Directive, effect, inject, input } from "@angular/core";
-import {
-  BrnTooltip,
-  BrnTooltipPosition,
-  provideBrnTooltipDefaultOptions,
-} from "@spartan-ng/brain/tooltip";
-import {
-  DEFAULT_TOOLTIP_CONTENT_CLASSES,
-  DEFAULT_TOOLTIP_SVG_CLASS,
-  tooltipPositionVariants,
-} from "@ui/tooltip";
-import { classes, hlm } from "@ui/utils";
+import { booleanAttribute, Directive, inject, input } from "@angular/core";
+import { classes } from "@ui/utils";
 import { cva } from "class-variance-authority";
 import { HlmSidebarService } from "./hlm-sidebar.service";
 import { injectHlmSidebarConfig } from "./hlm-sidebar.token";
@@ -39,22 +29,6 @@ const sidebarMenuButtonVariants = cva(
 
 @Directive({
   selector: "button[hlmSidebarMenuButton], a[hlmSidebarMenuButton]",
-  providers: [
-    provideBrnTooltipDefaultOptions({
-      showDelay: 150,
-      hideDelay: 0,
-      tooltipContentClasses: DEFAULT_TOOLTIP_CONTENT_CLASSES,
-      svgClasses: DEFAULT_TOOLTIP_SVG_CLASS,
-      arrowClasses: (position: BrnTooltipPosition) => hlm(tooltipPositionVariants({ position })),
-      position: "right",
-    }),
-  ],
-  hostDirectives: [
-    {
-      directive: BrnTooltip,
-      inputs: ["brnTooltip: tooltip"],
-    },
-  ],
   host: {
     "data-slot": "sidebar-menu-button",
     "data-sidebar": "menu-button",
@@ -66,7 +40,6 @@ const sidebarMenuButtonVariants = cva(
 export class HlmSidebarMenuButton {
   private readonly _config = injectHlmSidebarConfig();
   private readonly _sidebarService = inject(HlmSidebarService);
-  private readonly _brnTooltip = inject(BrnTooltip);
 
   public readonly variant = input<"default" | "outline">("default");
   public readonly size = input<"default" | "sm" | "lg">("default");
@@ -76,13 +49,8 @@ export class HlmSidebarMenuButton {
     { transform: booleanAttribute },
   );
 
-  protected readonly _isTooltipHidden = computed(
-    () => this._sidebarService.state() !== "collapsed" || this._sidebarService.isMobile(),
-  );
-
   constructor() {
     classes(() => sidebarMenuButtonVariants({ variant: this.variant(), size: this.size() }));
-    effect(() => this._brnTooltip.mutableTooltipDisabled.set(this._isTooltipHidden()));
   }
 
   protected onClick(): void {

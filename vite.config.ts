@@ -1,9 +1,12 @@
-import { defineConfig } from "vite-plus";
+import { existsSync, globSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { defineConfig, type TestProjectInlineConfiguration, type ViteUserConfig } from "vite-plus";
 
 export default defineConfig({
   staged: {
     "*": "vp check --fix",
   },
+  test: process.env["STRYKER_MUTATOR_WORKER"] ? await mutationTests() : undefined,
   fmt: {
     ignorePatterns: [".agents/skills/**"],
   },
@@ -49,3 +52,58 @@ export default defineConfig({
     ],
   },
 });
+
+/**
+ * Every workspace's unit test projects as one Vitest instance, so Stryker's vitest runner keeps it
+ * warm and runs only the tests covering each mutant. Only Stryker's workers load it, so nothing
+ * else pays for importing the client's Angular and Storybook plugins.
+ */
+async function mutationTests() {
+  const root = import.meta.dirname;
+  const { workspaces }: { workspaces: string[] } = JSON.parse(
+    readFileSync(join(root, "package.json"), "utf8"),
+  );
+  const packages = workspaces
+    .flatMap((pattern) => globSync(`${pattern}/package.json`, { cwd: root }))
+    .map((manifest) => {
+      const { name, exports = {} }: { name: string; exports?: Record<string, string> } = JSON.parse(
+        readFileSync(join(root, manifest), "utf8"),
+      );
+      return { name, exports, dir: join(root, dirname(manifest)) };
+    });
+
+  // The sandbox symlinks each node_modules back to the real checkout, so workspace imports would
+  // resolve to the unmutated packages. Point every export at the sandbox copy instead.
+  const alias = packages.flatMap(({ name, exports, dir }) =>
+    Object.entries(exports).map(([subpath, target]) => ({
+      find: join(name, subpath),
+      replacement: join(dir, target),
+    })),
+  );
+
+  const projects = await Promise.all(
+    packages.map(async ({ name, dir }) => {
+      // A computed specifier keeps Vite from bundling package configs, and their plugins, into this file.
+      const file = join(dir, "vite.config.ts");
+      const config: ViteUserConfig = existsSync(file) ? (await import(file)).default : {};
+      const candidates = config.test?.projects ?? [{ ...config, test: { ...config.test, name } }];
+      return (
+        candidates
+          .filter(
+            (project): project is TestProjectInlineConfiguration => typeof project === "object",
+          )
+          // Stryker's vitest runner can't run browser mode.
+          .filter((project) => !project.test?.browser?.enabled)
+          // Inline projects extend this file by default, re-bundling it into the shared
+          // node_modules/.vite-temp, which races across workers.
+          .map((project) => ({
+            ...project,
+            extends: false,
+            root: dir,
+            resolve: { ...project.resolve, alias },
+          }))
+      );
+    }),
+  );
+  return { projects: projects.flat() };
+}

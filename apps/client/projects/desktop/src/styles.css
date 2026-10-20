@@ -109,13 +109,3 @@
     user-select: text;
   }
 }
-
-/* Icons keep their resting pose when motion is reduced, including library hover handlers. */
-@media (prefers-reduced-motion: reduce) {
-  [appAnimateIcon] svg,
-  [appAnimateIcon] svg * {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-  }
-}

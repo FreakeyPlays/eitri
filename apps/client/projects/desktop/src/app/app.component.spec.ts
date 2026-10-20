@@ -1,21 +1,27 @@
 import { TestBed } from "@angular/core/testing";
+import { ProjectService } from "@features/projects/project.service";
 import { AppComponent } from "./app.component";
 
 const { isTauri } = vi.hoisted(() => ({ isTauri: vi.fn(() => true) }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri }));
 
+const load = vi.fn<() => Promise<void>>();
+
 describe("AppComponent interaction defaults", () => {
   beforeEach(() => {
     isTauri.mockReturnValue(true);
-    TestBed.configureTestingModule({}).overrideComponent(AppComponent, {
+    load.mockReset().mockResolvedValue(undefined);
+    TestBed.configureTestingModule({
+      providers: [{ provide: ProjectService, useValue: { load } }],
+    }).overrideComponent(AppComponent, {
       set: {
         imports: [],
         template: `<header data-app-chrome>
-          <button><span>Toggle</span></button><input /><textarea></textarea>
-          <div contenteditable="true"><b>Edit</b></div>
-          <a href="/settings">Settings</a><p class="select-text">Copy me</p>
-          <div data-native-context-menu>Native menu</div>
-        </header><main>Answer</main>`,
+        <button><span>Toggle</span></button><input /><textarea></textarea>
+        <div contenteditable="true"><b>Edit</b></div>
+        <a href="/settings">Settings</a><p class="select-text">Copy me</p>
+        <div data-native-context-menu>Native menu</div>
+      </header><main>Answer</main>`,
       },
     });
   });
@@ -31,6 +37,11 @@ describe("AppComponent interaction defaults", () => {
     };
     return { root, contextMenu };
   }
+
+  it("loads the recent projects when the app starts", () => {
+    setup();
+    expect(load).toHaveBeenCalledExactlyOnceWith();
+  });
 
   it("suppresses the desktop menu, including Shift-right-click", () => {
     const { root, contextMenu } = setup();

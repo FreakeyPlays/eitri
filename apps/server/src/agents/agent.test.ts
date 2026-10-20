@@ -1,11 +1,11 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import * as BunServices from "@effect/platform-bun/BunServices";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { Effect, Fiber } from "effect";
-import type { ChildProcessSpawner } from "effect/unstable/process";
-import { runAgent } from "./agent.ts";
+import type { ChildProcessSpawner } from "effect/process";
+import { askAgent, runAgent } from "./agent.ts";
 
 type Run<A, E> = Effect.Effect<A, E, ChildProcessSpawner.ChildProcessSpawner>;
 
@@ -28,6 +28,65 @@ describe("agent process", () => {
     if (directory) await rm(directory, { recursive: true, force: true });
   });
 
+  it("trims surrounding agent output whitespace without changing the answer's formatting", async () => {
+    expect(
+      await run(
+        runAgent(bun('await Bun.write(Bun.stdout, " \\n\\tfirst\\n  second\\t\\n ");'), ""),
+      ),
+    ).toBe("first\n  second");
+  });
+
+  it("drains large agent stdout and stderr concurrently", async () => {
+    const output = "ä".repeat(2_000_000);
+    expect(
+      await run(
+        runAgent(
+          bun(
+            'await Bun.stdin.text(); await Promise.all([Bun.write(Bun.stdout, "ä".repeat(2_000_000)), Bun.write(Bun.stderr, "e".repeat(2_000_000))]);',
+          ),
+          "hello",
+          "10 seconds",
+        ),
+      ),
+    ).toBe(output);
+  });
+
+  it.each([
+    ["codex", "codex exec --ephemeral --skip-git-repo-check --sandbox read-only --color never -"],
+    [
+      "claude",
+      "claude --print --output-format text --no-session-persistence --tools  --strict-mcp-config",
+    ],
+  ] as const)("starts %s with its read-only flags and the prompt on stdin", async (agent, line) => {
+    const bin = join(directory, "bin");
+    await mkdir(bin, { recursive: true });
+    // A stand-in CLI that echoes its name, arguments (empty ones kept) and stdin.
+    await Bun.write(
+      join(bin, agent),
+      '#!/bin/sh\nprintf "%s" "$(basename "$0")"; for a in "$@"; do printf " %s" "$a"; done; printf "\\n"; cat\n',
+    );
+    await chmod(join(bin, agent), 0o755);
+    const path = Bun.env["PATH"];
+    Bun.env["PATH"] = `${bin}${delimiter}${path}`;
+    try {
+      expect(await run(askAgent({ agent, prompt: "the prompt" }))).toBe(`${line}\nthe prompt`);
+    } finally {
+      Bun.env["PATH"] = path;
+    }
+  });
+
+  it("joins trimmed stderr and stdout in a failure, skipping the empty one", async () => {
+    const both = await failure(
+      runAgent(["/bin/sh", "-c", "printf '  oops \\n' >&2; printf '  partial \\n'; exit 3"], ""),
+    );
+    expect(both.message).toBe("Agent exited with 3: oops\npartial");
+
+    const onlyStdout = await failure(
+      runAgent(["/bin/sh", "-c", "printf ' only out \\n'; exit 4"], ""),
+    );
+    expect(onlyStdout.message).toBe("Agent exited with 4: only out");
+  });
+
   it("passes stdin literally and waits for EOF", async () => {
     const prompt = "--help\n$(do-not-execute) `literal` ä";
     expect(
@@ -43,20 +102,6 @@ describe("agent process", () => {
       ),
     );
     expect(error.message).toContain("Agent exited with 7: login required");
-  });
-
-  it("drains large stdout and stderr concurrently", async () => {
-    const output = "ä".repeat(100_000);
-    expect(
-      await run(
-        runAgent(
-          bun(
-            'await Bun.stdin.text(); await Promise.all([Bun.write(Bun.stdout, "ä".repeat(100_000)), Bun.write(Bun.stderr, "e".repeat(100_000))]);',
-          ),
-          "hello",
-        ),
-      ),
-    ).toBe(output);
   });
 
   it("reports a missing executable", async () => {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { isTauri } from "@tauri-apps/api/core";
 import { ProjectService } from "@features/projects/project.service";
 import { ShellComponent } from "@shell/shell.component";
@@ -6,8 +6,7 @@ import { ShellComponent } from "@shell/shell.component";
 @Component({
   selector: "app-root",
   imports: [ShellComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: "<app-shell />",
+  templateUrl: "./app.component.html",
   host: {
     "[attr.data-desktop]": "desktop ? '' : null",
     "(document:contextmenu)": "onContextMenu($event)",
@@ -17,7 +16,7 @@ export class AppComponent {
   protected readonly desktop = isTauri();
 
   constructor() {
-    // Restores the project the user left off in; the picker reports any problem.
+    // Selects the most recently opened project; the picker reports any problem.
     void inject(ProjectService).load();
   }
 

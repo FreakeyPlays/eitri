@@ -14,13 +14,26 @@ describe("BrowseFoldersRequestSchema", () => {
     (path) => expect(decode({ path })).toEqual({ path }),
   );
 
-  it.each(["", "relative", "./folder", "~another-user"])("rejects %j", (path) => {
-    expect(() => decode({ path })).toThrow(FOLDER_PATH_MESSAGE);
-  });
+  it.each(["", "relative", "./folder", "~another-user", "prefix~/folder", "prefix~"])(
+    "rejects %j",
+    (path) => {
+      expect(() => decode({ path })).toThrow(FOLDER_PATH_MESSAGE);
+    },
+  );
 });
 
 describe("FolderListingSchema", () => {
   const decode = Schema.decodeUnknownSync(FolderListingSchema);
+
+  it.each([
+    {},
+    { path: "/srv", directories: [], truncated: "false" },
+    { path: "/srv", directories: [{}], truncated: false },
+    { path: "/srv", directories: [{ name: "work" }], truncated: false },
+    { path: "/srv", directories: [{ path: "/srv/work" }], truncated: false },
+  ])("rejects malformed listings %j", (listing) => {
+    expect(() => decode(listing)).toThrow();
+  });
 
   it("carries canonical child paths and truncation", () => {
     const listing = {

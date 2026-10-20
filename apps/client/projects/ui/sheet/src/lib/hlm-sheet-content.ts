@@ -1,7 +1,6 @@
 import type { BooleanInput } from "@angular/cdk/coercion";
 import {
   booleanAttribute,
-  ChangeDetectionStrategy,
   Component,
   effect,
   ElementRef,
@@ -22,7 +21,6 @@ import { HlmSheetClose } from "./hlm-sheet-close";
   selector: "hlm-sheet-content",
   imports: [HlmButton, HlmSheetClose, NgIcon],
   providers: [provideIcons({ lucideX })],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     "data-slot": "sheet-content",
     "[attr.data-side]": "_sideProvider.side()",

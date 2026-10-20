@@ -56,7 +56,7 @@ function bumped(version: string, bump: Bump) {
   return `${major}.${minor}.${patch! + 1}`;
 }
 
-const [command, flag, ...extra] = process.argv.slice(2);
+const [command, flag, ...extra] = Bun.argv.slice(2);
 
 if (command !== "version" || (flag !== undefined && flag !== "--dry") || extra.length > 0) {
   console.error("usage: bun scripts/release.ts version [--dry]");

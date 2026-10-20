@@ -1,16 +1,8 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  output,
-  signal,
-} from "@angular/core";
+import { Component, inject, output, signal } from "@angular/core";
 import type { Project } from "@eitri/contracts/project";
 import { NgIcon, provideIcons } from "@ng-icons/core";
 import { lucideSettings } from "@ng-icons/lucide";
 import { HlmButton } from "@ui/button";
-import { HlmCommandImports } from "@ui/command";
 import { HlmDialogService } from "@ui/dialog";
 import { ProjectService } from "@features/projects/project.service";
 import { FolderBrowserComponent } from "../folder-browser/folder-browser.component";
@@ -26,11 +18,10 @@ import { ProjectSettingsComponent } from "../project-settings/project-settings.c
  */
 @Component({
   selector: "app-project-menu",
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FolderBrowserComponent, HlmButton, HlmCommandImports, NgIcon],
+  imports: [FolderBrowserComponent, HlmButton, NgIcon],
   providers: [provideIcons({ lucideSettings })],
   templateUrl: "./project-menu.component.html",
-  host: { class: "block" },
+  host: { "[class]": "browsing() ? 'block w-96' : 'block w-80'" },
 })
 export class ProjectMenuComponent {
   readonly chosen = output<void>();
@@ -38,20 +29,8 @@ export class ProjectMenuComponent {
   protected readonly browsing = signal(false);
   private readonly dialog = inject(HlmDialogService);
 
-  /**
-   * Working across projects is only a choice once there are several. It stays
-   * listed while selected, so the current scope is never hidden from view.
-   */
-  protected readonly showAllProjects = computed(
-    () => this.projects.projects().length > 1 || this.projects.allSelected(),
-  );
-
   protected async choose(path: string) {
     if (await this.projects.open(path)) this.chosen.emit();
-  }
-
-  protected chooseAll() {
-    if (this.projects.openAll()) this.chosen.emit();
   }
 
   /**

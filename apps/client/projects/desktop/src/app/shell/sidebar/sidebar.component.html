@@ -1,0 +1,76 @@
+@if (settings()) {
+  <div hlmSidebarContent class="gap-1 p-1">
+    @for (section of settingsSections; track $index) {
+      <section
+        class="flex flex-col gap-1"
+        [class.pt-3]="expanded() && !section.label && !$first"
+        [attr.aria-label]="section.label"
+      >
+        @if (expanded() && section.label) {
+          <h2
+            class="px-2.5 pt-3 pb-1 text-xs font-medium text-muted-foreground transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
+          >
+            {{ section.label }}
+          </h2>
+        }
+        @for (page of section.pages; track page.path) {
+          <app-sidebar-item [label]="page.label" [link]="'/settings/' + page.path">
+            <ng-icon [svg]="page.icon" class="shrink-0" size="18" aria-hidden="true" />
+          </app-sidebar-item>
+        }
+      </section>
+    }
+  </div>
+  <div hlmSidebarFooter class="gap-1 p-1">
+    <app-sidebar-item label="Back" link="/">
+      <ng-icon [svg]="icons.lucideArrowLeft" class="shrink-0" size="18" aria-hidden="true" />
+    </app-sidebar-item>
+  </div>
+} @else {
+  <div hlmSidebarHeader class="gap-1 p-1">
+    @for (page of workspacePages; track page.path) {
+      <app-sidebar-item [label]="page.label" [link]="'/' + page.path">
+        <ng-icon [svg]="page.icon" class="shrink-0" size="18" aria-hidden="true" />
+      </app-sidebar-item>
+    }
+  </div>
+  <div hlmSidebarContent>
+    @if (expanded()) {
+      <section
+        class="px-2 pt-2 transition-opacity duration-200 starting:opacity-0 motion-reduce:transition-none"
+        aria-label="Sessions"
+      >
+        <div class="flex items-center gap-1">
+          <div hlmInputGroup class="flex-1">
+            <div hlmInputGroupAddon>
+              <ng-icon [svg]="icons.lucideSearch" aria-hidden="true" />
+            </div>
+            <input
+              hlmInputGroupInput
+              type="search"
+              placeholder="Search"
+              aria-label="Search sessions"
+            />
+          </div>
+          <button hlmBtn variant="ghost" size="icon" type="button" aria-label="Filter sessions">
+            <ng-icon [svg]="icons.lucideListFilter" aria-hidden="true" />
+          </button>
+          <a hlmBtn variant="ghost" size="icon" routerLink="/sessions/new" aria-label="New session">
+            <ng-icon [svg]="icons.lucidePlus" aria-hidden="true" />
+          </a>
+        </div>
+      </section>
+    } @else {
+      <div class="p-1">
+        <app-sidebar-item class="text-muted-foreground" label="New session" link="/sessions/new">
+          <ng-icon [svg]="icons.lucidePlus" class="shrink-0" size="18" aria-hidden="true" />
+        </app-sidebar-item>
+      </div>
+    }
+  </div>
+  <div hlmSidebarFooter class="gap-1 p-1">
+    <app-sidebar-item label="Settings" link="/settings">
+      <ng-icon [svg]="icons.lucideSettings" class="shrink-0" size="18" aria-hidden="true" />
+    </app-sidebar-item>
+  </div>
+}

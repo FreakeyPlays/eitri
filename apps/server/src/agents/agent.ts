@@ -1,6 +1,6 @@
 import { type Agent, AgentError, type AgentRequest } from "@eitri/contracts/agent";
 import { type Duration, Effect, type PlatformError, Stream } from "effect";
-import { ChildProcess } from "effect/unstable/process";
+import { ChildProcess } from "effect/process";
 
 const commands = {
   codex: [

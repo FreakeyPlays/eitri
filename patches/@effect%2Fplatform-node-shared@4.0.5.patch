@@ -1,0 +1,28 @@
+diff --git a/dist/NodeChildProcessSpawner.js b/dist/NodeChildProcessSpawner.js
+index 16dedd52262a0343df11fb14496f5f9f2a0f1e92..f76a6a6028d6c00f7780c0555c1186010b07a8c5 100644
+--- a/dist/NodeChildProcessSpawner.js
++++ b/dist/NodeChildProcessSpawner.js
+@@ -279,6 +279,9 @@ const make = /*#__PURE__*/Effect.gen(function* () {
+   const spawn = (command, spawnOptions) => Effect.callback(resume => {
+     const deferred = Deferred.makeUnsafe();
+     const handle = NodeChildProcess.spawn(command.command, command.args, spawnOptions);
++    // The stdin sink observes errors while writing. Keep a listener after it
++    // finishes or is interrupted: a pending write can still emit EPIPE.
++    handle.stdin?.on("error", () => {});
+     handle.on("error", error => {
+       resume(Effect.fail(toPlatformError("spawn", error, command)));
+     });
+diff --git a/src/NodeChildProcessSpawner.ts b/src/NodeChildProcessSpawner.ts
+index 77a1384e8033988c54df4c6bf48654039dd3b16f..e8ec212ab1c944e2596105286e38c94eb0667a6b 100644
+--- a/src/NodeChildProcessSpawner.ts
++++ b/src/NodeChildProcessSpawner.ts
+@@ -394,6 +394,9 @@ const make = Effect.gen(function*() {
+         command.args,
+         spawnOptions
+       )
++      // The stdin sink observes errors while writing. Keep a listener after it
++      // finishes or is interrupted: a pending write can still emit EPIPE.
++      handle.stdin?.on("error", () => {})
+       handle.on("error", (error) => {
+         resume(Effect.fail(toPlatformError("spawn", error, command)))
+       })

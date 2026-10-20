@@ -14,9 +14,10 @@
   },
   "dependencies": {
     "@eitri/contracts": "workspace:*",
-    "effect": "catalog:"
+    "effect": "catalog:effect"
   },
   "devDependencies": {
+    "@typescript/native": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   }

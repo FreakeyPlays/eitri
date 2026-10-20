@@ -42,8 +42,8 @@ holds a name the user chose: while it is null the project follows its folder.
 Saving an empty name clears it back to null; any other name is stored as typed,
 including one that happens to match the folder. Reopening a folder never disturbs
 the name it already carries.
-Which project a window shows is not stored anywhere: every client starts on all
-projects.
+Which project a window shows is not stored separately: every client starts on
+the most recently opened project, or with no selection when the list is empty.
 
 `apps/server/src/storage/database.ts` opens the file through Effect SQL's Bun client, which serializes
 access, waits up to five seconds for a busy database, uses WAL (so

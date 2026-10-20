@@ -26,7 +26,7 @@ Plain HTTP is left for `/health`; project operations and folder browsing use RPC
 ## Current structure
 
 - **Frontend** (`apps/client`): Angular UI shared by the web
-  and desktop clients. Folder ownership, pages, commands and panels are described
+  and desktop clients. Folder ownership, pages and panels are described
   in [Client UI](client-ui.md).
   `ServerService` holds the RPC connection; client adapters resolve the server
   address and isolate native capabilities. The Tauri shell in `apps/client/src-tauri`
@@ -116,7 +116,7 @@ binaries under their own triples, because Tauri builds each architecture separat
 and join them with `lipo`. Neither a separate Bun runtime nor a JavaScript resource
 is shipped.
 
-Choosing a project and returning to an earlier one works; chats inside a project,
+Choosing a project and returning to an earlier one works; sessions inside a project,
 the rest of the project workflow, and remote access are not implemented yet.
 
 Keep presentation in the UI and process integration inside the server adapter.

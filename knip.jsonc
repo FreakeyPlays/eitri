@@ -5,13 +5,7 @@
   "workspaces": {
     ".": {
       "project": ["*.{js,mjs,cjs,ts,mts,cts}"],
-      "stryker": false,
-      "ignoreDependencies": [
-        "@angular-eslint/eslint-plugin",
-        "varlock",
-        "@varlock/bitwarden-plugin",
-        "vite",
-      ],
+      "ignoreDependencies": ["vite"],
     },
     "apps/client": {
       "entry": ["projects/ui/*/src/index.ts!"],
@@ -19,8 +13,6 @@
       "ignoreDependencies": ["@spartan-ng/cli"],
     },
     "apps/server": {
-      // Invoked directly by the Bun test script; imports use vite-plus/test.
-      "ignoreDependencies": ["vitest"],
       "entry": ["src/bin.ts!"],
       "project": ["src/**/*.ts!"],
     },

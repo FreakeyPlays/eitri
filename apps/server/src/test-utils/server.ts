@@ -1,8 +1,8 @@
 import * as BunServices from "@effect/platform-bun/BunServices";
 import { RPC_PATH } from "@eitri/contracts/rpc";
 import { Console, Effect, Exit, Fiber, Layer, Scope } from "effect";
-import { type Rpc, RpcClient, type RpcGroup, RpcSerialization } from "effect/unstable/rpc";
-import { Socket } from "effect/unstable/socket";
+import { type Rpc, RpcClient, type RpcGroup, RpcSerialization } from "effect/rpc";
+import { Socket } from "effect/socket";
 import { runServer } from "../server.ts";
 
 /** Boots the real server on an ephemeral port; bin.test.ts covers the executable itself. */

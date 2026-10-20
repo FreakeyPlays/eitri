@@ -9,61 +9,46 @@
     hlmBtn
     variant="ghost"
     size="icon"
-    appAnimateIcon
-    #sidebarIcon="appAnimateIcon"
-    [hlmTooltip]="layout.isOpen('sidebar') ? 'Collapse sidebar' : 'Expand sidebar'"
     [attr.aria-label]="layout.isOpen('sidebar') ? 'Collapse sidebar' : 'Expand sidebar'"
     [attr.aria-expanded]="layout.isOpen('sidebar')"
     aria-controls="shell-sidebar"
     (click)="layout.toggle('sidebar')"
   >
     @if (layout.isOpen("sidebar")) {
-      <i-panel-left-close size="18" aria-hidden="true" [animate]="sidebarIcon.animate()" />
+      <ng-icon name="lucidePanelLeftClose" size="18" aria-hidden="true" />
     } @else {
-      <i-panel-left-open size="18" aria-hidden="true" [animate]="sidebarIcon.animate()" />
+      <ng-icon name="lucidePanelLeft" size="18" aria-hidden="true" />
     }
   </button>
-  <app-project-switcher />
-  @if (layout.has("bottom") || layout.has("right")) {
-    <div class="ml-auto flex items-center gap-1" role="group" aria-label="Workspace panels">
-      @if (layout.has("bottom")) {
-        <button
-          hlmBtn
-          variant="ghost"
-          size="icon"
-          appAnimateIcon
-          #terminalIcon="appAnimateIcon"
-          [hlmTooltip]="layout.isOpen('bottom') ? 'Hide terminal' : 'Show terminal'"
-          [attr.aria-label]="layout.isOpen('bottom') ? 'Hide terminal' : 'Show terminal'"
-          [attr.aria-expanded]="layout.isOpen('bottom')"
-          aria-controls="shell-bottom"
-          [class.bg-accent]="layout.isOpen('bottom')"
-          (click)="layout.toggle('bottom')"
-        >
-          <i-square-terminal size="18" aria-hidden="true" [animate]="terminalIcon.animate()" />
-        </button>
+  <app-breadcrumbs />
+  <div class="ml-auto flex items-center gap-1" role="group" aria-label="Workspace panels">
+    <button
+      hlmBtn
+      variant="ghost"
+      size="icon"
+      [attr.aria-label]="layout.isOpen('bottom') ? 'Hide terminal' : 'Show terminal'"
+      [attr.aria-expanded]="layout.isOpen('bottom')"
+      aria-controls="shell-bottom"
+      [class.bg-accent]="layout.isOpen('bottom')"
+      (click)="layout.toggle('bottom')"
+    >
+      <ng-icon name="lucideSquareTerminal" size="18" aria-hidden="true" />
+    </button>
+    <button
+      hlmBtn
+      variant="ghost"
+      size="icon"
+      [attr.aria-label]="layout.isOpen('right') ? 'Hide right panel' : 'Show right panel'"
+      [attr.aria-expanded]="layout.isOpen('right')"
+      aria-controls="shell-right"
+      [class.bg-accent]="layout.isOpen('right')"
+      (click)="layout.toggle('right')"
+    >
+      @if (layout.isOpen("right")) {
+        <ng-icon name="lucidePanelRightClose" size="18" aria-hidden="true" />
+      } @else {
+        <ng-icon name="lucidePanelRight" size="18" aria-hidden="true" />
       }
-      @if (layout.has("right")) {
-        <button
-          hlmBtn
-          variant="ghost"
-          size="icon"
-          appAnimateIcon
-          #rightIcon="appAnimateIcon"
-          [hlmTooltip]="layout.isOpen('right') ? 'Hide right panel' : 'Show right panel'"
-          [attr.aria-label]="layout.isOpen('right') ? 'Hide right panel' : 'Show right panel'"
-          [attr.aria-expanded]="layout.isOpen('right')"
-          aria-controls="shell-right"
-          [class.bg-accent]="layout.isOpen('right')"
-          (click)="layout.toggle('right')"
-        >
-          @if (layout.isOpen("right")) {
-            <i-panel-right-close size="18" aria-hidden="true" [animate]="rightIcon.animate()" />
-          } @else {
-            <i-panel-right-open size="18" aria-hidden="true" [animate]="rightIcon.animate()" />
-          }
-        </button>
-      }
-    </div>
-  }
+    </button>
+  </div>
 </header>

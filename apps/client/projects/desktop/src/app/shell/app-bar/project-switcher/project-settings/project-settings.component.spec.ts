@@ -29,7 +29,15 @@ describe("ProjectSettingsComponent", () => {
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
-        { provide: BrnDialogRef, useValue: { close, state: signal("open") } },
+        {
+          provide: BrnDialogRef,
+          useValue: {
+            close,
+            state: signal("open"),
+            registerDescription: () => {},
+            unregisterDescription: () => {},
+          },
+        },
         { provide: DIALOG_DATA, useValue: { project: eitri } },
         { provide: ProjectService, useValue: { busy, error, rename, forget } },
       ],
@@ -119,6 +127,50 @@ describe("ProjectSettingsComponent", () => {
     button("Remove")!.click();
     await vi.waitFor(() => expect(forget).toHaveBeenCalledExactlyOnceWith(eitri.id));
     await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+  });
+
+  it("ignores repeated saves before the busy state disables the field", async () => {
+    let finish!: (saved: boolean) => void;
+    rename.mockImplementation(() => {
+      busy.set(true);
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    const { fixture, button, field, type } = await render();
+    type("Renamed");
+
+    button("Save")!.click();
+    field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(rename).toHaveBeenCalledExactlyOnceWith(eitri.id, "Renamed");
+    expect(close).not.toHaveBeenCalled();
+    finish(true);
+    await fixture.whenStable();
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("ignores repeated removal before the busy state disables confirmation", async () => {
+    let finish!: (removed: boolean) => void;
+    forget.mockImplementation(() => {
+      busy.set(true);
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    const { fixture, button } = await render();
+    button("Remove from Eitri")!.click();
+    fixture.detectChanges();
+    const remove = button("Remove")!;
+
+    remove.click();
+    remove.click();
+
+    expect(forget).toHaveBeenCalledExactlyOnceWith(eitri.id);
+    expect(close).not.toHaveBeenCalled();
+    finish(true);
+    await fixture.whenStable();
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it("holds every action while a request is pending", async () => {

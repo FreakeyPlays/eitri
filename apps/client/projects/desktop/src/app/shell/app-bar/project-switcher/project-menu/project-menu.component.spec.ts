@@ -1,4 +1,4 @@
-import { computed, signal } from "@angular/core";
+import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import type { Project } from "@eitri/contracts/project";
 import { HlmDialogService } from "@ui/dialog";
@@ -13,6 +13,7 @@ const eitri = {
   name: "eitri",
   lastOpenedAt: "2026-09-21T10:00:00.000Z",
 };
+
 const other = {
   id: "f035a77d-24b4-41c5-a2dc-93b56425d53a",
   path: "/git/other",
@@ -26,7 +27,6 @@ describe("ProjectMenuComponent", () => {
   const error = signal<string | null>(null);
   const busy = signal(false);
   const open = vi.fn<(path: string) => Promise<boolean>>();
-  const openAll = vi.fn<() => Promise<boolean>>();
   const forget = vi.fn<(path: string) => Promise<boolean>>();
   const pickFolder = vi.fn<() => Promise<string | null>>();
   const load = vi.fn();
@@ -43,7 +43,6 @@ describe("ProjectMenuComponent", () => {
     loaded.set(true);
     canPickFolder = true;
     open.mockReset().mockResolvedValue(true);
-    openAll.mockReset().mockResolvedValue(true);
     forget.mockReset().mockResolvedValue(true);
     pickFolder.mockReset().mockResolvedValue(null);
     load.mockReset();
@@ -53,8 +52,6 @@ describe("ProjectMenuComponent", () => {
       directories: [],
       truncated: false,
     });
-    // jsdom lacks scrollIntoView, which the command list calls on its active item.
-    Element.prototype.scrollIntoView = () => {};
     TestBed.configureTestingModule({
       providers: [
         provideSpartanHlm(),
@@ -64,14 +61,12 @@ describe("ProjectMenuComponent", () => {
           useFactory: () => ({
             projects,
             active,
-            allSelected: computed(() => active() === null),
             error,
             busy,
             loaded,
             canPickFolder,
             load,
             open,
-            openAll,
             forget,
             pickFolder,
             listFolders,
@@ -87,19 +82,16 @@ describe("ProjectMenuComponent", () => {
     fixture.componentInstance.chosen.subscribe(chosen);
     await fixture.whenStable();
     const element: HTMLElement = fixture.nativeElement;
-    // Only project rows carry a title; the "All projects" entry has none.
     const items = () => [
-      ...element.querySelectorAll<HTMLButtonElement>("button[data-slot=command-item][title]"),
+      ...element.querySelectorAll<HTMLButtonElement>(
+        'ul[aria-label="Projects"] li > button[title]',
+      ),
     ];
-    const allEntry = () =>
-      [...element.querySelectorAll<HTMLButtonElement>("button[data-slot=command-item]")].find(
-        (item) => item.textContent?.includes("All projects"),
-      );
     const button = (label: string) =>
       [...element.querySelectorAll("button")].find((el) => el.textContent?.trim() === label);
     const settings = (name: string) =>
       element.querySelector<HTMLButtonElement>(`button[aria-label="Settings for ${name}"]`);
-    return { fixture, element, items, allEntry, button, settings, chosen };
+    return { fixture, element, items, button, settings, chosen };
   }
 
   it("lists what the user opened before, marking the open one", async () => {
@@ -118,44 +110,19 @@ describe("ProjectMenuComponent", () => {
     expect(items().map((item) => item.getAttribute("aria-current"))).toEqual(["true", null]);
   });
 
-  it("does not offer working across projects with only one of them", async () => {
-    projects.set([eitri]);
-    active.set(eitri);
-    const { allEntry } = await render();
+  it.each([{ collection: [eitri] }, { collection: [other, eitri] }])(
+    "offers only individual projects for $collection.length known projects",
+    async ({ collection }) => {
+      projects.set(collection);
+      active.set(collection[0]);
+      const { element, items } = await render();
 
-    expect(allEntry()).toBeUndefined();
-  });
-
-  it("offers working across projects once there are several", async () => {
-    projects.set([other, eitri]);
-    active.set(null);
-    const { allEntry } = await render();
-
-    expect(allEntry()).toBeDefined();
-    // Marked like any other selection, so the current scope is obvious.
-    expect(allEntry()!.getAttribute("aria-current")).toBe("true");
-  });
-
-  it("keeps working across projects listed while it is the selection", async () => {
-    // The last project was forgotten, so one is left and all of them are selected.
-    projects.set([eitri]);
-    active.set(null);
-    const { allEntry } = await render();
-
-    expect(allEntry()).toBeDefined();
-  });
-
-  it("switches to every project at once", async () => {
-    projects.set([other, eitri]);
-    active.set(other);
-    const { allEntry, chosen } = await render();
-
-    allEntry()!.click();
-
-    await vi.waitFor(() => expect(openAll).toHaveBeenCalledOnce());
-    await vi.waitFor(() => expect(chosen).toHaveBeenCalledOnce());
-    expect(open).not.toHaveBeenCalled();
-  });
+      expect(element.querySelectorAll('ul[aria-label="Projects"] > li')).toHaveLength(
+        collection.length,
+      );
+      expect(items()).toHaveLength(collection.length);
+    },
+  );
 
   it("offers settings on every entry without waiting for a hover", async () => {
     projects.set([other, eitri]);
@@ -171,37 +138,23 @@ describe("ProjectMenuComponent", () => {
     settings("eitri")!.click();
 
     expect(openDialog).toHaveBeenCalledOnce();
-    expect(openDialog.mock.calls[0][1]).toMatchObject({ context: { project: eitri } });
+    expect(openDialog.mock.calls[0][1]).toEqual({
+      context: { project: eitri },
+      contentClass: "sm:max-w-md",
+    });
     // Naming and removal happen in the dialog, so the dropdown stays open.
     expect(chosen).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();
   });
 
-  it("narrows the list by name or path, so switching stays fast", async () => {
+  it("shows every project without a search bar", async () => {
     projects.set([other, eitri]);
-    const { element } = await render();
-    const search = element.querySelector<HTMLInputElement>("input[data-slot=command-input]")!;
-    // Filtered-out entries stay in the DOM and are hidden by `data-hidden`.
-    const shown = () =>
-      [...element.querySelectorAll("button[data-slot=command-item][title]")]
-        .filter((item) => !item.hasAttribute("data-hidden"))
-        .map((item) => item.querySelector("span")?.textContent);
+    const { element, items, button } = await render();
 
-    const type = async (text: string) => {
-      search.value = text;
-      search.dispatchEvent(new Event("input"));
-      await Promise.resolve();
-    };
-
-    await type("eit");
-    await vi.waitFor(() => expect(shown()).toEqual(["eitri"]));
-
-    // The hidden path still matches, so a folder can be found by where it lives.
-    await type("/git/other");
-    await vi.waitFor(() => expect(shown()).toEqual(["other"]));
-
-    await type("nothing-here");
-    await vi.waitFor(() => expect(shown()).toEqual([]));
+    expect(element.querySelector("input")).toBeNull();
+    expect(items().map((item) => item.title)).toEqual([other.path, eitri.path]);
+    expect(items().every((item) => item.type === "button" && item.tabIndex === 0)).toBe(true);
+    expect(button("Open folder…")?.disabled).toBe(false);
   });
 
   it("reports the chosen project, so the dropdown can close", async () => {
@@ -229,11 +182,14 @@ describe("ProjectMenuComponent", () => {
     expect(chosen).not.toHaveBeenCalled();
   });
 
-  it("explains an empty list instead of showing an empty search", async () => {
-    const { element } = await render();
+  it("explains an empty list and offers one action to open a folder", async () => {
+    const { element, button } = await render();
 
     expect(element.textContent).toContain("No projects yet");
-    expect(element.querySelector("input[data-slot=command-input]")).toBeNull();
+    expect(element.textContent).toContain("Open a folder to start your first project.");
+    expect(element.querySelector("input")).toBeNull();
+    expect(element.querySelectorAll("button")).toHaveLength(1);
+    expect(button("Open folder…")?.disabled).toBe(false);
   });
 
   it("opens the folder the desktop picker returned", async () => {
@@ -266,7 +222,7 @@ describe("ProjectMenuComponent", () => {
     const browser = fixture.debugElement.query(
       (node) => node.componentInstance instanceof FolderBrowserComponent,
     ).componentInstance as FolderBrowserComponent;
-    expect(element.textContent).toContain("Select this folder");
+    expect(element.querySelector("input[name=folder-path]")).not.toBeNull();
     browser.selected.emit("/srv/work");
 
     await vi.waitFor(() => expect(open).toHaveBeenCalledExactlyOnceWith("/srv/work"));
@@ -356,12 +312,20 @@ describe("ProjectMenuComponent", () => {
   });
 
   it("holds actions while a request is still running", async () => {
+    projects.set([eitri]);
     busy.set(true);
     loaded.set(false);
     error.set("Could not reach the Eitri server.");
-    const { button } = await render();
+    const { items, button, settings, chosen } = await render();
 
     expect(button("Open folder…")?.disabled).toBe(true);
     expect(button("Try again")?.disabled).toBe(true);
+    expect(items()[0].disabled).toBe(true);
+    expect(settings("eitri")?.disabled).toBe(true);
+    items()[0].click();
+    settings("eitri")!.click();
+    expect(open).not.toHaveBeenCalled();
+    expect(openDialog).not.toHaveBeenCalled();
+    expect(chosen).not.toHaveBeenCalled();
   });
 });

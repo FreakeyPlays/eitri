@@ -4,14 +4,14 @@ import { Cause, Exit, Runtime } from "effect";
 import { resolveDataDir } from "./storage/data-dir.ts";
 import { runServer } from "./server.ts";
 
-const port = Number(process.env["PORT"] ?? 4318);
+const port = Number(Bun.env["PORT"] ?? 4318);
 if (!Number.isInteger(port) || port < 0 || port > 65535) {
   throw new Error("PORT must be an integer between 0 and 65535.");
 }
-const sidecar = process.argv.includes("--sidecar");
+const sidecar = Bun.argv.includes("--sidecar");
 const dataDir = resolveDataDir({
-  override: process.env["EITRI_DATA_DIR"],
-  dev: process.argv.includes("--dev"),
+  override: Bun.env["EITRI_DATA_DIR"],
+  dev: Bun.argv.includes("--dev"),
   home: homedir(),
 });
 

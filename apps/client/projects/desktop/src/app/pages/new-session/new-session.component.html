@@ -1,0 +1,6 @@
+<div class="max-w-sm text-center">
+  <h1 class="text-lg font-medium tracking-tight">{{ projects.active()?.name }}</h1>
+  <p class="mt-2 truncate text-sm text-muted-foreground" [attr.title]="projects.active()?.path">
+    {{ projects.active()?.path }}
+  </p>
+</div>

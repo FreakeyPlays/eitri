@@ -11,18 +11,28 @@ name defaults to the folder name and can be customized, so two Projects can shar
 a name. Renaming a Project in Eitri does not rename its directory. Relocating a
 Project while preserving its identity is not implemented.
 
-Each client independently selects one Project or all Projects. The remembered
-collection persists, while the selection lasts only for the current window
-session: every start begins on all Projects.
+Each client independently selects one Project, and Projects opened before stay
+available to switch back to. Every start selects the most recently opened
+Project, or none when the collection is empty.
 
-## Chat
+## Project scope
 
-A conversation between the user and a coding agent within a Project.
-Use `Chat` for this conversation in product language.
+The pages that work inside a Project: overview, manage, wiki and new session.
+Without a selected Project they show an introduction that points to the project
+menu instead. Settings stay outside the scope.
+
+## Session
+
+One piece of work between the user and an Agent within a Project: the
+conversation and its history. One Session is one session of the Agent CLI that
+runs it. Use `Session` in product language and code.
+
+Also called Chat (its earlier name in Eitri) or Thread (as in Codex and T3 Code);
+both mean the same thing. Don't introduce them as separate concepts.
 
 ## Agent
 
-The coding assistant the user interacts with in a Chat.
+The coding assistant the user interacts with in a Session.
 Distinct from the installed tool used to run it, which is the Agent CLI.
 
 ## Agent CLI

@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import * as SqliteClient from "@effect/sql-sqlite-bun/SqliteClient";
 import { Cause, Data, Effect, Layer } from "effect";
-import { Migrator, SqlClient } from "effect/unstable/sql";
+import { Migrator, SqlClient } from "effect/sql";
 import Projects from "./migrations/001_projects.ts";
 
 /**
