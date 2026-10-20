@@ -49,6 +49,7 @@
   "overrides": {
     "qs": "6.16.1",
     "smol-toml": "1.9.1",
+    "undici": "7.29.1",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
@@ -86,6 +87,7 @@
   "patchedDependencies": {
     "@stryker-mutator/vitest-runner@10.0.0": "patches/@stryker-mutator%2Fvitest-runner@10.0.0.patch",
     "@effect/platform-node-shared@4.0.5": "patches/@effect%2Fplatform-node-shared@4.0.5.patch",
-    "@storybook/angular-vite@11.0.0-alpha.6": "patches/@storybook%2Fangular-vite@11.0.0-alpha.6.patch"
+    "@storybook/angular-vite@11.0.0-alpha.6": "patches/@storybook%2Fangular-vite@11.0.0-alpha.6.patch",
+    "@analogjs/vite-plugin-angular@2.8.1": "patches/@analogjs%2Fvite-plugin-angular@2.8.1.patch"
   }
 }

@@ -1,0 +1,95 @@
+diff --git a/src/lib/angular-vite-plugin.js b/src/lib/angular-vite-plugin.js
+index 909b7d2c89d5a98c5bf07ce5848981ce966c60af..0091320549370cf3648fcc6c36fbdf03d305e361 100644
+--- a/src/lib/angular-vite-plugin.js
++++ b/src/lib/angular-vite-plugin.js
+@@ -3,7 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, } from 'node:pa
+ import * as vite from 'vite';
+ import * as compilerCli from '@angular/compiler-cli';
+ import { createRequire } from 'node:module';
+-import * as ts from 'typescript';
++import * as ts from '@typescript/typescript6';
+ import { globSync } from 'tinyglobby';
+ import { createFilter, defaultClientConditions, normalizePath, preprocessCSS, } from 'vite';
+ import { buildOptimizerPlugin } from './angular-build-optimizer-plugin.js';
+@@ -68,7 +68,7 @@ export function angular(options) {
+     };
+     let resolvedConfig;
+     let tsConfigResolutionContext = null;
+-    const ts = require('typescript');
++    const ts = require('@typescript/typescript6');
+     let builder;
+     let nextProgram;
+     // Caches (always rebuild Angular program per user request)
+@@ -1424,7 +1424,7 @@ const hmrMetadataCache = new WeakMap();
+  * @internal
+  */
+ export function getFileMetadata(program, angularCompiler, liveReload, disableTypeChecking) {
+-    const ts = require('typescript');
++    const ts = require('@typescript/typescript6');
+     return (file) => {
+         const sourceFile = program.getSourceFile(file);
+         if (!sourceFile) {
+diff --git a/src/lib/compiler/compile.js b/src/lib/compiler/compile.js
+index 45dcb7a8437be999f9f282e06c106a6eccb50a18..99b9da9fae05b34dd3a8114eec6ee05d669bbc25 100644
+--- a/src/lib/compiler/compile.js
++++ b/src/lib/compiler/compile.js
+@@ -1,4 +1,4 @@
+-import * as ts from 'typescript';
++import * as ts from '@typescript/typescript6';
+ import * as fs from 'node:fs';
+ import * as path from 'node:path';
+ import * as o from '@angular/compiler';
+diff --git a/src/lib/compiler/defer.js b/src/lib/compiler/defer.js
+index b5e610a83c8c40df4a6c00327e7b7e91b911dbd5..f4c802f031e3cd4167e5b15c5c51a60a4262bad2 100644
+--- a/src/lib/compiler/defer.js
++++ b/src/lib/compiler/defer.js
+@@ -1,4 +1,4 @@
+-import * as ts from 'typescript';
++import * as ts from '@typescript/typescript6';
+ import * as o from '@angular/compiler';
+ /** Recursively collect all DeferredBlock nodes from a template AST. */
+ export function collectDeferBlocks(nodes) {
+diff --git a/src/lib/compiler/js-emitter.js b/src/lib/compiler/js-emitter.js
+index 6ce1c6cd2f11cc450cbb5d3a963f6a3dfb7f5437..15c9051a94106a388b7f01f2459e49c8dc2dd9a4 100644
+--- a/src/lib/compiler/js-emitter.js
++++ b/src/lib/compiler/js-emitter.js
+@@ -1,4 +1,4 @@
+-import * as ts from 'typescript';
++import * as ts from '@typescript/typescript6';
+ import * as o from '@angular/compiler';
+ /** Shared printer — only used as fallback for complex WrappedNodeExpr (e.g. decorator args). */
+ const sharedPrinter = ts.createPrinter({ removeComments: true });
+diff --git a/src/lib/compiler/utils.js b/src/lib/compiler/utils.js
+index f48a255895fa0f9c9166b12380a81aa6c6c77e55..12732c90d3fb0e56898f3063abc0acbd02c8fb1e 100644
+--- a/src/lib/compiler/utils.js
++++ b/src/lib/compiler/utils.js
+@@ -1,4 +1,4 @@
+-import * as ts from 'typescript';
++import * as ts from '@typescript/typescript6';
+ import * as path from 'node:path';
+ /** Collect type-only imported names: `import type { X }` and `import { type X }`. */
+ export function collectTypeOnlyImports(sf) {
+diff --git a/src/lib/host.js b/src/lib/host.js
+index c96bcc5b3d5ac60fdf9549c8c362ae10a5117c50..3c20b09dec6921a9fd2c4bfb4b05187912f5fb5e 100644
+--- a/src/lib/host.js
++++ b/src/lib/host.js
+@@ -1,5 +1,5 @@
+ import { normalizePath } from 'vite';
+-import * as ts from 'typescript';
++import * as ts from '@typescript/typescript6';
+ import { createHash } from 'node:crypto';
+ import path from 'node:path';
+ import { EXCLUDED_TS_EXT_REGEX, TS_EXT_REGEX } from './utils/plugin-config.js';
+diff --git a/src/lib/utils/hmr-candidates.js b/src/lib/utils/hmr-candidates.js
+index 8bf2aaca60b0cbc5ac9b7060415e82f584fde7fb..accf897248f01a8b17ea932f6861a1e29b0bb01a 100644
+--- a/src/lib/utils/hmr-candidates.js
++++ b/src/lib/utils/hmr-candidates.js
+@@ -6,7 +6,7 @@
+  * found in the LICENSE file at https://angular.dev/license
+  */
+ import assert from 'node:assert';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+ /**
+  * Analyzes one or more modified files for changes to determine if any
+  * class declarations for Angular components are candidates for hot
