@@ -17,11 +17,11 @@ side trusts the wire. Expected failures are tagged errors (`ProjectsError`,
 `FoldersError`, `AgentError`) carrying one sentence for the user.
 
 Calls travel over a single WebSocket at `RPC_PATH` (`/api/rpc`), served by
-`BunHttpServer` and `HttpRouter`. The socket stays open, so later event streams —
-agent output, another client renaming a project — arrive on the same connection
-without polling. A WebSocket ignores the same-origin policy, so the server refuses
+`BunHttpServer` and `HttpRouter`. The socket stays open between calls. Streaming agent output and live project
+change notifications are not implemented; sharing database state does not
+automatically refresh another client's already-loaded list. A WebSocket ignores the same-origin policy, so the server refuses
 an upgrade from any origin other than the Tauri shell, the dev server or itself.
-Plain HTTP is left for `/health`. This is how T3 Code talks to its server, too.
+Plain HTTP is left for `/health`; project operations and folder browsing use RPC.
 
 ## Current structure
 
@@ -74,6 +74,12 @@ projects, agents and filesystem implement the behavior without importing transpo
 Storage owns database lifetime and schema; project SQL stays with project operations
 so their transaction rules can be understood in one place. Tests sit beside the
 code they exercise; root server and executable tests cover the assembled system.
+
+Keep new behavior with the responsibility that owns it, adding a subfolder when
+there is a distinct group to navigate. `storage/` owns opening and migrating the
+database; it is not a second home for every feature's queries. Shared test
+fixtures belong in `test-utils/`, outside production dependencies. Folder names
+express these responsibilities; they do not require extra wrapper layers.
 
 For project state, start with `features/projects/` in the client; for its menu,
 start with `shell/app-bar/project-switcher/`. Follow the request through

@@ -2,6 +2,11 @@
 
 The web and desktop UI lives in `apps/client/projects/desktop/src/app`.
 
+The frontend is organized around pages and their UI owners, with shared
+application state kept separately. It is one Angular application, not a library
+per feature. The server has its own responsibility-based structure; see
+[Architecture](architecture.md#server-source-map).
+
 ```text
 app/
 ├── app.*                   startup, providers and routes
@@ -41,11 +46,15 @@ Page-specific UI and behavior stay with their page.
 particular screen. For example, `ProjectService` serves startup, the project
 scope and the project switcher. It owns the collection and selection, while the
 switcher owns how the user operates the menu. `core/platform/` isolates web and
-Tauri capabilities; `core/connection/` owns RPC transport. Root `app.*` files assemble these
-pieces. Shared visual primitives live in `apps/client/projects/ui`.
+Tauri capabilities; `core/connection/` owns RPC transport. `core/` must not depend
+on application features, pages or shell UI. Being used throughout the application
+does not make state infrastructure: the project collection still belongs in
+`features/projects/`. Root `app.*` files assemble these pieces. Shared visual
+primitives live in `apps/client/projects/ui`.
 
 Each application component has its own folder, containing its implementation,
-template and test. A page or shell component can use its existing owning folder;
+template and test; very small templates may remain inline. A page or shell
+component can use its existing owning folder;
 additional components get named subfolders, such as `app-bar/breadcrumbs/` and
 `project-switcher/project-menu/`. The root `AppComponent` remains beside `app.*`.
 
@@ -73,6 +82,12 @@ it shows a short introduction in place of the page, without changing the URL,
 and its button opens the project menu through `LayoutService.showProjectMenu()`.
 Choosing a project then shows the page the user asked for. Settings sit outside
 the scope.
+
+The folder browser works through a highlight. A filter highlights its best match,
+the arrows move the highlight, and Enter steps into the highlighted folder; with
+nothing highlighted, or with ⌘/Ctrl held, Enter opens the folder. A `..` row leads
+upwards; its parent is derived in the client from the typed path. The path rules,
+including Windows paths, live in `folder-browser/folder-path.ts`.
 
 The shell renders one `SidebarComponent`. It lists the workspace pages, or the
 settings pages while a route with `data: { sidebar: "settings" }` is open.

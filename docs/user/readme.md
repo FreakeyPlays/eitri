@@ -10,8 +10,9 @@ panel, and a terminal area.
 
 - **Projects:** choose a project from the menu on the project name in the app
   bar. On desktop, add one with the system folder picker; in the browser, browse
-  the server's folders instead. Each project in the menu has settings to rename
-  it or remove it from Eitri; removing never touches its files.
+  the server's folders instead. A Git repository is not required. Each project
+  in the menu has settings to rename it or remove it from Eitri; removing never
+  touches its files.
 - **Pages:** the sidebar leads to Overview, Manage, Wiki and the settings. These
   pages are placeholders for now. Without a selected project, Overview, Manage
   and Wiki ask you to choose one first.

@@ -23,4 +23,10 @@ Reusable Spartan Helm components live in `apps/client/projects/ui` and are impor
 
 `@eitri/shared` and `@eitri/contracts` export `./agent`, `./project` and `./folder`, with no root export. Import the explicit subpath. Files that are not exported are implementation details.
 
-See [Architecture](architecture.md) for runtime boundaries and planned responsibilities.
+Within the Angular app, `@core/*`, `@features/*`, `@pages/*` and `@shell/*` map to
+the corresponding folders. Import the owning file directly, and use relative
+imports within a component or its owning area. The mappings are maintained in
+`apps/client/tsconfig.json` and `tsconfig.depcruise.json`.
+
+See [Client UI](client-ui.md) for frontend placement and component folders, and
+[Architecture](architecture.md) for server responsibilities and the request flow.
